@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            width: 320px;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 10px;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .label {
+            font-size: 14px;
+            color: #555;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-top: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #2563EB;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>👁️ Vision Aid</h1>
+
+    <div class="card">
+        <div class="toggle-row">
+            <span class="label">Color Blindness Filter</span>
+            <input type="checkbox" id="filterToggle">
+        </div>
+        <select id="filterType">
+            <option value="none">Normal</option>
+            <option value="protanopia">Protanopia (No Red)</option>
+            <option value="deuteranopia">Deuteranopia (No Green)</option>
+            <option value="tritanopia">Tritanopia (No Blue)</option>
+            <option value="achromatopsia">Achromatopsia (Grayscale)</option>
+            <option value="high-contrast">High Contrast Mode</option>
+        </select>
+    </div>
+
+    <div class="card">
+        <div class="toggle-row">
+            <span class="label">Cursor Color Inspector</span>
+            <input type="checkbox" id="inspectorToggle">
+        </div>
+        <p style="font-size: 11px; color: #888; margin: 5px 0 0;">Hover over elements to announce their color.</p>
+    </div>
+
+    <button id="resetBtn">Reset All Settings</button>
+
+    <div class="status">Vision Aid Extension v1.0</div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

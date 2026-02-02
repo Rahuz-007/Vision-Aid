@@ -26,7 +26,6 @@ class CacheService {
                     if (options.attempt > 10) {
                         return undefined;
                     }
-                    // Reconnect after
                     return Math.min(options.attempt * 100, 3000);
                 },
             });
@@ -48,7 +47,7 @@ class CacheService {
             await this.client.connect();
         } catch (error) {
             logger.error('Failed to connect to Redis', { error: error.message });
-            // Don't throw - allow app to run without cache
+
         }
     }
 
@@ -128,7 +127,6 @@ class CacheService {
      */
     middleware(duration = 300) {
         return async (req, res, next) => {
-            // Only cache GET requests
             if (req.method !== 'GET') {
                 return next();
             }
@@ -142,10 +140,10 @@ class CacheService {
                     return res.json(cachedResponse);
                 }
 
-                // Store original res.json
+
                 const originalJson = res.json.bind(res);
                 res.json = (body) => {
-                    // Cache the response
+
                     this.set(key, body, duration).catch(err => {
                         logger.error('Failed to cache response', { error: err.message });
                     });
@@ -171,6 +169,6 @@ class CacheService {
     }
 }
 
-// Export singleton instance
+
 const cacheService = new CacheService();
 module.exports = cacheService;

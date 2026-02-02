@@ -4,7 +4,7 @@ const DetectionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false, // Optional for backward compatibility
+    required: false,
     index: true,
   },
   imagePath: {
@@ -70,7 +70,7 @@ const DetectionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
+
 DetectionSchema.index({ 'metadata.timestamp': -1 });
 DetectionSchema.index({ 'detections.class': 1 });
 

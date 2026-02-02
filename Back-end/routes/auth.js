@@ -15,7 +15,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     try {
         const { email, password, name } = req.body;
 
-        // Check if user already exists
+
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({
@@ -24,13 +24,13 @@ router.post('/register', validate(registerSchema), async (req, res) => {
             });
         }
 
-        // Create new user
+
         const user = new User({
             email,
             password,
             name,
         });
-        user._passwordModified = true; // IMPORTANT for our custom Firebase model to know to hash it
+        user._passwordModified = true;
 
         await user.save();
 
@@ -70,10 +70,10 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find user and compare password
+
         const user = await User.findByCredentials(email, password);
 
-        // Update last login
+
         user.lastLogin = new Date();
         await user.save();
 
@@ -194,7 +194,7 @@ router.post('/logout', authenticateToken, (req, res) => {
     });
 });
 
-// Google Auth Routes
+
 router.get('/test', (req, res) => res.send('Auth route is working'));
 
 router.get('/google', (req, res, next) => {
@@ -217,7 +217,7 @@ router.get('/google/callback', (req, res, next) => {
 
         req.user = user;
 
-        // Successful authentication
+
         try {
             const token = req.user.generateAuthToken();
             res.redirect(`${frontendUrl}?token=${token}&login=success`);
@@ -228,7 +228,7 @@ router.get('/google/callback', (req, res, next) => {
     })(req, res, next);
 });
 
-// GitHub Auth Routes
+
 router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
 
 router.get('/github/callback', (req, res, next) => {
