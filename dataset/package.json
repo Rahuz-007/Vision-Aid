@@ -1,0 +1,27 @@
+{
+  "name": "vision-aid-traffic-signal",
+  "version": "1.0.0",
+  "description": "Mongoose schema for storing traffic signal detection results",
+  "main": "trafficSignalSchema.js",
+  "scripts": {
+    "start": "node trafficSignalExample.js",
+    "dev": "nodemon trafficSignalExample.js"
+  },
+  "keywords": [
+    "mongoose",
+    "mongodb",
+    "traffic-signal",
+    "vision",
+    "detection"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/mongoose": "^5.11.97",
+    "nodemon": "^3.0.0",
+    "typescript": "^5.0.0"
+  }
+}
