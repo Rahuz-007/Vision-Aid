@@ -10,7 +10,7 @@ Start-Sleep -Seconds 3
 
 # Start Back-end (Node.js) on port 3000
 Write-Host "[2/3] Starting Back-end Server on port 3000..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'C:\Users\ASUS\Desktop\Vision aid\Back-end'; npm start" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'C:\Users\ASUS\Desktop\Vision aid\Back-end'; `$env:PORT='3000'; npm start" -WindowStyle Normal
 
 Start-Sleep -Seconds 3
 

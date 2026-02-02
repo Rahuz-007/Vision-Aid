@@ -163,8 +163,8 @@ def find_nearest_color(rgb_input: Tuple[int, int, int], color_db: List[Dict]) ->
 
 def analyze_traffic_light_color(image: Image.Image, box: Dict[str, float], color_db: List[Dict]) -> str:
     """
-    Analyze the color of a detected traffic light by finding the brightest 
-    spot within the box and matching it against the dataset.
+    Analyze the color of a detected traffic light using HSV color space 
+    to better handle light sources and contrast against the dark casing.
     """
     x1, y1, x2, y2 = int(box['x1']), int(box['y1']), int(box['x2']), int(box['y2'])
     width, height = image.size
@@ -175,52 +175,83 @@ def analyze_traffic_light_color(image: Image.Image, box: Dict[str, float], color
         return 'unknown'
     
     traffic_light_region = image.crop((x1, y1, x2, y2))
-    img_array = np.array(traffic_light_region)
     
-    # Standard traffic lights are vertical. Let's find the brightest section.
+    # Convert to HSV for better color segmentation
+    img_hsv = traffic_light_region.convert('HSV')
+    img_array = np.array(img_hsv)
+    
     h, w = img_array.shape[:2]
     section_height = h // 3
     
-    # Calculate average brightness for each section
+    # Define sections
     sections = [
-        img_array[0:section_height, :],           # Top (usually Red)
-        img_array[section_height:2*section_height, :], # Middle (usually Yellow)
-        img_array[2*section_height:, :]           # Bottom (usually Green)
+        ("red", img_array[0:section_height, :]),            # Top
+        ("yellow", img_array[section_height:2*section_height, :]), # Middle
+        ("green", img_array[2*section_height:, :])           # Bottom
     ]
     
-    max_brightness = -1
-    best_rgb = (0, 0, 0)
-    best_section_idx = -1
+    max_score = 0
+    detected_color = 'unknown'
     
-    for i, section in enumerate(sections):
+    for color_name, section in sections:
         if section.size == 0: continue
         
-        # Calculate mean RGB
-        avg_r = np.mean(section[:, :, 0])
-        avg_g = np.mean(section[:, :, 1])
-        avg_b = np.mean(section[:, :, 2])
+        # Extract channels
+        h_channel = section[:, :, 0]
+        s_channel = section[:, :, 1]
+        v_channel = section[:, :, 2]
         
-        brightness = (avg_r + avg_g + avg_b) / 3
+        # Create masks for standard traffic light colors in HSV (0-255 scale in PIL)
+        # H: 0-255 (where 0 is 0deg, 255 is 360deg)
+        # Red: H < 20 or H > 235
+        # Yellow: H 20-50
+        # Green: H 50-120
         
-        # If this section is bright enough to be "on"
-        if brightness > max_brightness and brightness > 100: # Threshold for active light
-            max_brightness = brightness
-            best_rgb = (int(avg_r), int(avg_g), int(avg_b))
-            best_section_idx = i
+        if color_name == 'red':
+            mask = ((h_channel < 25) | (h_channel > 230)) & (s_channel > 50) & (v_channel > 60)
+        elif color_name == 'yellow':
+            mask = (h_channel >= 20) & (h_channel <= 60) & (s_channel > 50) & (v_channel > 60)
+        elif color_name == 'green':
+            mask = (h_channel >= 40) & (h_channel <= 130) & (s_channel > 50) & (v_channel > 60)
+            
+        # Calculate "score" as number of matching pixels * their brightness
+        # This favors bright, colorful blobs (the light) over dark background
+        matching_pixels = section[mask]
+        
+        if matching_pixels.size > 0:
+            # Score is sum of brightness of matching pixels
+            score = np.sum(matching_pixels[:, 2])
+            
+            # Normalize by section size to filter noise
+            normalized_score = score / (section.shape[0] * section.shape[1])
+            
+            if normalized_score > max_score and normalized_score > 5: # Threshold
+                max_score = normalized_score
+                detected_color = color_name
 
-    if best_section_idx == -1:
-        return 'unknown'
+    # Fallback: if no color detected via HSV, look at simple max brightness position
+    if detected_color == 'unknown':
+        img_gray = traffic_light_region.convert('L')
+        gray_array = np.array(img_gray)
         
-    # Use the color database to find the nearest match for the "on" lamp
-    detected_color = find_nearest_color(best_rgb, color_db)
-    
-    # Safety fallback: if section 0 is brightest but matched to green, trust position or adjust
-    # For now, we trust the database match but filter by standard positions
-    if best_section_idx == 0 and detected_color != 'red' and max_brightness > 150:
-        return 'red' # Top is almost always red
-    if best_section_idx == 2 and detected_color != 'green' and max_brightness > 150:
-        return 'green' # Bottom is almost always green
+        brightness_scores = []
+        for i in range(3):
+            sec = gray_array[i*section_height : (i+1)*section_height, :]
+            if sec.size > 0:
+                # Use max brightness instead of mean to find the "bulb"
+                brightness_scores.append(np.max(sec))
+            else:
+                brightness_scores.append(0)
         
+        best_section = np.argmax(brightness_scores)
+        max_val = brightness_scores[best_section]
+        
+        # If the brighest spot is actually bright (scale 0-255)
+        if max_val > 150:
+            if best_section == 0: return 'red'
+            if best_section == 1: return 'yellow'
+            if best_section == 2: return 'green'
+
     return detected_color
 
 
