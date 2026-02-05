@@ -5,6 +5,7 @@ const { validate, registerSchema, loginSchema } = require('../middleware/validat
 const { authenticateToken } = require('../middleware/auth');
 const logger = require('../config/logger');
 const passport = require('passport');
+const { admin } = require('../services/firebase');
 
 /**
  * @route   POST /api/auth/register
@@ -254,6 +255,79 @@ router.get('/github/callback', (req, res, next) => {
             res.redirect(`${frontendUrl}/login?error=token_error`);
         }
     })(req, res, next);
+});
+
+/**
+ * @route   POST /api/auth/firebase-login
+ * @desc    Login/Register with Firebase Token
+ * @access  Public
+ */
+router.post('/firebase-login', async (req, res) => {
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            return res.status(400).json({ error: 'Token is required' });
+        }
+
+        // Verify Firebase Token
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        const { email, name, uid, picture } = decodedToken;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required in Firebase token' });
+        }
+
+        // Check if user exists
+        let user = await User.findOne({ email });
+
+        if (user) {
+            // Update user info if needed
+            user.lastLogin = new Date();
+            if (!user.firebaseUid) user.firebaseUid = uid;
+            if (picture && !user.avatar) user.avatar = picture;
+            await user.save();
+        } else {
+            // Create new user
+            user = new User({
+                email,
+                name: name || email.split('@')[0],
+                firebaseUid: uid,
+                password: Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8), // Dummy password
+                isVerified: true, // Firebase emails are verified
+                avatar: picture
+            });
+            await user.save();
+            logger.info('New user registered via Firebase', { userId: user._id });
+        }
+
+        // Generate Backend Token
+        const backendToken = user.generateAuthToken();
+
+        logger.info('User logged in via Firebase', { userId: user._id });
+
+        res.json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                token: backendToken,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    name: user.name,
+                    lastLogin: user.lastLogin,
+                    avatar: user.avatar
+                },
+            },
+        });
+
+    } catch (error) {
+        logger.error('Firebase Login Error', { error: error.message });
+        res.status(401).json({
+            error: 'Authentication failed',
+            message: error.message,
+        });
+    }
 });
 
 module.exports = router;

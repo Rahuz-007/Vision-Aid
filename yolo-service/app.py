@@ -12,6 +12,7 @@ from collections import deque
 import numpy as np
 
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from PIL import Image
 from ultralytics import YOLO
 
@@ -275,7 +276,9 @@ def calculate_distance(box: Dict[str, float]) -> float:
 
 
 # Initialize Flask app
+# Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 
 # Initialize YOLO service
 print("Loading YOLO model...")
@@ -374,6 +377,73 @@ def detect() -> Any:
     
     # Cleanup memory
     yolo_service.cleanup_memory()
+    
+    return jsonify(result), 200
+
+
+@app.route("/detect-color", methods=["POST"])
+def detect_color() -> Any:
+    """General color detection endpoint for live color detection"""
+    start_time = time.time()
+    
+    if "image" not in request.files:
+        return jsonify({"error": "Missing file field 'image'"}), 400
+
+    file_storage = request.files["image"]
+    if not file_storage.filename:
+        return jsonify({"error": "Empty filename"}), 400
+
+    image_bytes = file_storage.read()
+    
+    try:
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception as e:
+        return jsonify({"error": f"Invalid image: {str(e)}"}), 400
+
+    # Get center region for color detection
+    width, height = image.size
+    center_x, center_y = width // 2, height // 2
+    sample_size = min(width, height) // 10  # 10% of image size
+    
+    x1 = max(0, center_x - sample_size)
+    y1 = max(0, center_y - sample_size)
+    x2 = min(width, center_x + sample_size)
+    y2 = min(height, center_y + sample_size)
+    
+    # Extract center region
+    center_region = image.crop((x1, y1, x2, y2))
+    
+    # Convert to numpy array and calculate average color
+    img_array = np.array(center_region)
+    avg_color = img_array.mean(axis=(0, 1)).astype(int)
+    r, g, b = int(avg_color[0]), int(avg_color[1]), int(avg_color[2])
+    
+    # Find nearest color from database
+    if color_db:
+        min_distance = float('inf')
+        color_name = 'Unknown'
+        
+        for color in color_db:
+            distance = math.sqrt(
+                (r - color['r'])**2 + 
+                (g - color['g'])**2 + 
+                (b - color['b'])**2
+            )
+            if distance < min_distance:
+                min_distance = distance
+                color_name = color['name']
+    else:
+        color_name = "Unknown"
+
+    
+    processing_time = time.time() - start_time
+    
+    result = {
+        "color_name": color_name,
+        "rgb": {"r": r, "g": g, "b": b},
+        "hex": f"#{r:02x}{g:02x}{b:02x}",
+        "processing_time": processing_time
+    }
     
     return jsonify(result), 200
 

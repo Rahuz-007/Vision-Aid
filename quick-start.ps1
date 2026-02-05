@@ -65,9 +65,9 @@ switch ($choice) {
             Write-Host "================================================" -ForegroundColor Cyan
             Write-Host ""
             Write-Host "Access your services:" -ForegroundColor Yellow
-            Write-Host "  Frontend:  http://localhost:3001" -ForegroundColor White
-            Write-Host "  Backend:   http://localhost:3000" -ForegroundColor White
-            Write-Host "  YOLO:      http://localhost:8000" -ForegroundColor White
+            Write-Host "  Frontend:  http://localhost:3000" -ForegroundColor White
+            Write-Host "  Backend:   http://localhost:3001" -ForegroundColor White
+            Write-Host "  YOLO:      http://localhost:5000" -ForegroundColor White
             Write-Host "  MongoDB:   mongodb://admin:password@localhost:27017" -ForegroundColor White
             Write-Host "  Redis:     redis://localhost:6379" -ForegroundColor White
             Write-Host ""
@@ -124,7 +124,7 @@ switch ($choice) {
             
             # Check Backend
             try {
-                $response = Invoke-WebRequest -Uri "http://localhost:3000/health" -UseBasicParsing -TimeoutSec 2
+                $response = Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing -TimeoutSec 2
                 Write-Host "Backend:  ✓ Running" -ForegroundColor Green
             }
             catch {
@@ -133,7 +133,7 @@ switch ($choice) {
             
             # Check YOLO
             try {
-                $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing -TimeoutSec 2
+                $response = Invoke-WebRequest -Uri "http://localhost:5000/health" -UseBasicParsing -TimeoutSec 2
                 Write-Host "YOLO:     ✓ Running" -ForegroundColor Green
             }
             catch {
@@ -142,7 +142,7 @@ switch ($choice) {
             
             # Check Frontend
             try {
-                $response = Invoke-WebRequest -Uri "http://localhost:3001" -UseBasicParsing -TimeoutSec 2
+                $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 2
                 Write-Host "Frontend: ✓ Running" -ForegroundColor Green
             }
             catch {
