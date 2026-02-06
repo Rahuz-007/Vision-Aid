@@ -55,4 +55,45 @@ if (process.env.NODE_ENV !== 'production') {
     logger.debug('Logger initialized in development mode');
 }
 
-module.exports = logger;
+/**
+ * Request logging middleware
+ * Logs HTTP requests with timing information
+ */
+const requestLogger = (req, res, next) => {
+    const start = Date.now();
+
+    // Log on response finish
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const logData = {
+            method: req.method,
+            url: req.url,
+            status: res.statusCode,
+            duration: `${duration}ms`,
+            ip: req.ip || req.connection.remoteAddress,
+        };
+
+        // Log based on status code
+        if (res.statusCode >= 500) {
+            logger.error('Server error', logData);
+        } else if (res.statusCode >= 400) {
+            logger.warn('Client error', logData);
+        } else {
+            logger.http('Request completed', logData);
+        }
+    });
+
+    next();
+};
+
+/**
+ * Stream for Morgan integration
+ */
+const stream = {
+    write: (message) => {
+        logger.http(message.trim());
+    },
+};
+
+module.exports = { logger, requestLogger, stream };
+

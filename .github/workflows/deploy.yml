@@ -1,0 +1,181 @@
+name: Deploy to Production
+
+on:
+    push:
+        branches:
+            - main
+            - master
+        tags:
+            - "v*.*.*"
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: "Deployment environment"
+                required: true
+                default: "staging"
+                type: choice
+                options:
+                    - staging
+                    - production
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+    # Build Docker Images
+    build:
+        name: Build Docker Images
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+
+        strategy:
+            matrix:
+                service: [backend, frontend]
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=pr
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+                      type=sha,prefix={{branch}}-
+                      type=raw,value=latest,enable={{is_default_branch}}
+
+            - name: Build and push Backend image
+              if: matrix.service == 'backend'
+              uses: docker/build-push-action@v5
+              with:
+                  context: ./Back-end
+                  file: ./Back-end/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Build and push Frontend image
+              if: matrix.service == 'frontend'
+              uses: docker/build-push-action@v5
+              with:
+                  context: ./front -end/vision-aid-ui
+                  file: ./front -end/vision-aid-ui/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  build-args: |
+                      REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}
+                      REACT_APP_FIREBASE_API_KEY=${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+                      REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+                      REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+
+    # Deploy to Server (Optional - for VPS/dedicated server)
+    deploy-server:
+        name: Deploy to Server
+        needs: build
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Deploy via SSH
+              uses: appleboy/ssh-action@master
+              if: ${{ secrets.SSH_HOST != '' }}
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USERNAME }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  script: |
+                      cd ${{ secrets.DEPLOY_PATH || '/opt/vision-aid' }}
+
+                      # Pull latest images
+                      docker-compose pull
+
+                      # Restart services
+                      docker-compose up -d
+
+                      # Clean up old images
+                      docker image prune -af
+
+                      # Check service health
+                      sleep 10
+                      docker-compose ps
+
+                      echo "✅ Deployment complete!"
+
+            - name: Notify deployment
+              if: always()
+              run: |
+                  echo "🚀 Deployment triggered for ${{ github.ref }}"
+                  echo "📦 Images: backend, frontend"
+                  echo "🌍 Environment: production"
+
+    # Deploy to Vercel (Frontend only)
+    deploy-vercel:
+        name: Deploy Frontend to Vercel
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Deploy to Vercel
+              if: ${{ secrets.VERCEL_TOKEN != '' }}
+              run: |
+                  cd "front -end/vision-aid-ui"
+                  npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
+              env:
+                  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+                  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    # Health Check Post-Deployment
+    health-check:
+        name: Post-Deployment Health Check
+        needs: [deploy-server]
+        runs-on: ubuntu-latest
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+        steps:
+            - name: Wait for deployment
+              run: sleep 30
+
+            - name: Check backend health
+              if: ${{ secrets.BACKEND_URL != '' }}
+              run: |
+                  curl -f ${{ secrets.BACKEND_URL }}/health || echo "⚠️ Backend health check failed"
+
+            - name: Check frontend
+              if: ${{ secrets.FRONTEND_URL != '' }}
+              run: |
+                  curl -f ${{ secrets.FRONTEND_URL }} || echo "⚠️ Frontend health check failed"
+
+            - name: Deployment summary
+              run: |
+                  echo "✅ Deployment pipeline complete"
+                  echo "🔍 Review logs above for any issues"
