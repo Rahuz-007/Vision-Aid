@@ -10,9 +10,12 @@ import HelpCenterModal from './HelpCenterModal';
 import toast from 'react-hot-toast';
 import {
     FaBars, FaTimes, FaBell, FaCog,
-    FaUser, FaSignOutAlt, FaQuestionCircle, FaSlidersH, FaPalette
+    FaUser, FaSignOutAlt, FaQuestionCircle, FaSlidersH, FaPalette,
+    FaVolumeUp, FaCheckDouble, FaInfoCircle, FaCheckCircle, FaExclamationTriangle
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import { useSettings } from '../../context/SettingsContext'; // Add import
 
 const Header = () => {
     const { currentUser, logout } = useAuth();
@@ -20,6 +23,7 @@ const Header = () => {
     const navigate = useNavigate();
     const { isDarkMode } = useTheme();
     const { history: colorHistory } = useColorHistory();
+    const { speak } = useSettings(); // Get speak from context
 
     // UI States
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -30,9 +34,9 @@ const Header = () => {
     const [notificationOpen, setNotificationOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [notifications, setNotifications] = useState([
-        { id: 1, text: "Welcome to VisionAid! Try our new features.", time: "2m ago", read: false },
-        { id: 2, text: "Traffic Signal Detector updated.", time: "1h ago", read: false },
-        { id: 3, text: "Your profile is 80% complete.", time: "1d ago", read: true }
+        { id: 1, text: "Welcome to VisionAid! Try our new features.", time: "2m ago", read: false, type: 'info' },
+        { id: 2, text: "Traffic Signal Detector updated.", time: "1h ago", read: false, type: 'success' },
+        { id: 3, text: "Your profile is 80% complete.", time: "1d ago", read: true, type: 'warning' }
     ]);
 
     // Refs for click outside
@@ -55,10 +59,20 @@ const Header = () => {
 
     const markAsRead = (id) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+        toast.success("Marked as read");
     };
 
     const clearAllNotifications = () => {
         setNotifications([]);
+        toast.success("Notifications cleared");
+    };
+
+    const speakNotifications = () => {
+        const unread = notifications.filter(n => !n.read);
+        const textToSpeak = unread.length > 0
+            ? `You have ${unread.length} new notifications. ${unread.map(n => n.text).join('. ')}`
+            : "No new notifications.";
+        speak(textToSpeak, true); // Use centralized speak function
     };
 
     const handleLogout = async () => {
@@ -163,14 +177,20 @@ const Header = () => {
                                         className="absolute right-0 mt-4 w-80 bg-white dark:bg-[#111] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden z-50 origin-top-right"
                                     >
                                         <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-white/5">
-                                            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notifications</h3>
-                                            <button onClick={clearAllNotifications} className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notifications</h3>
+                                                <button onClick={speakNotifications} className="p-1.5 rounded-full text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="Read Aloud">
+                                                    <FaVolumeUp className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                            <button onClick={clearAllNotifications} className="text-xs font-medium text-gray-500 hover:text-red-500 flex items-center gap-1 transition-colors">
                                                 Clear all
                                             </button>
                                         </div>
                                         <div className="max-h-[300px] overflow-y-auto">
                                             {notifications.length === 0 ? (
-                                                <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                                                <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm flex flex-col items-center gap-2">
+                                                    <FaCheckDouble className="w-8 h-8 opacity-20" />
                                                     No new notifications
                                                 </div>
                                             ) : (
@@ -178,17 +198,28 @@ const Header = () => {
                                                     <div
                                                         key={notif.id}
                                                         onClick={() => markAsRead(notif.id)}
-                                                        className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${!notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+                                                        className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-all relative group ${!notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent opacity-75'
                                                             }`}
                                                     >
-                                                        <div className="flex gap-3">
-                                                            <div className={`mt-1 flex-shrink-0 w-2 h-2 rounded-full ${!notif.read ? 'bg-blue-500' : 'bg-transparent'}`}></div>
-                                                            <div>
-                                                                <p className={`text-sm ${!notif.read ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                        <div className="flex gap-3 items-start">
+                                                            {/* Semantic Icon based on Type */}
+                                                            <div className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${notif.type === 'success' ? 'bg-green-100 text-green-600' :
+                                                                notif.type === 'warning' ? 'bg-orange-100 text-orange-600' :
+                                                                    'bg-blue-100 text-blue-600'
+                                                                }`}>
+                                                                {notif.type === 'success' ? <FaCheckCircle className="w-3 h-3" /> :
+                                                                    notif.type === 'warning' ? <FaExclamationTriangle className="w-3 h-3" /> :
+                                                                        <FaInfoCircle className="w-3 h-3" />}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <p className={`text-sm leading-snug ${!notif.read ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                                                                     {notif.text}
                                                                 </p>
-                                                                <p className="text-xs text-gray-400 mt-1">{notif.time}</p>
+                                                                <p className="text-[10px] text-gray-400 mt-1 font-mono uppercase tracking-wide">{notif.time}</p>
                                                             </div>
+                                                            {!notif.read && (
+                                                                <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5" title="Unread"></span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))

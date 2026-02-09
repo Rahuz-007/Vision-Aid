@@ -33,6 +33,12 @@ const TrafficSignalDetector = () => {
   const [showSettings, setShowSettings] = useState(false); // Kept for future use
   const [detectionCount, setDetectionCount] = useState({ red: 0, yellow: 0, green: 0 });
 
+  // AI Integration
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
+  const [aiStatus, setAiStatus] = useState('offline'); // 'offline', 'connecting', 'active'
+  const lastAiCallTime = useRef(0);
+  const aiOverride = useRef({ status: null, expires: 0 });
+
   // Status Debouncing
   const statusHistory = useRef([]);
   // We use adaptive consistency now, so this constant is less strict
@@ -199,7 +205,77 @@ const TrafficSignalDetector = () => {
 
   }, [addToGlobalHistory]);
 
-  // Detect Traffic Light (OPTIMIZED V2)
+  // Helper: RGB to HSV conversion
+  const rgbToHsv = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, v = max;
+    const d = max - min;
+    s = max === 0 ? 0 : d / max;
+    if (max === min) {
+      h = 0; // achromatic
+    } else {
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return [h * 360, s * 100, v * 100];
+  };
+
+  // AI Detection Service
+  const detectWithAI = useCallback(async (blob) => {
+    if (Date.now() - lastAiCallTime.current < 500) return; // Limit to 2 FPS
+    lastAiCallTime.current = Date.now();
+
+    const formData = new FormData();
+    formData.append('image', blob, 'frame.jpg');
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s Timeout
+
+      const response = await fetch('http://localhost:5000/detect', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const result = await response.json();
+        setAiStatus('active');
+
+        if (result.detections && result.detections.length > 0) {
+          // Find highest confidence traffic light
+          const bestDetection = result.detections.sort((a, b) => b.confidence - a.confidence)[0];
+
+          let aiSignal = 'No Signal';
+          if (bestDetection.color === 'red') aiSignal = 'Red Light';
+          else if (bestDetection.color === 'yellow') aiSignal = 'Yellow Light';
+          else if (bestDetection.color === 'green') aiSignal = 'Green Light';
+
+          if (aiSignal !== 'No Signal') {
+            aiOverride.current = {
+              status: aiSignal,
+              expires: Date.now() + 1000 // Trust AI for 1 second
+            };
+            // Update confidence to the AI's confidence
+            setConfidence(Math.round(bestDetection.confidence * 100));
+          }
+        }
+      } else {
+        setAiStatus('offline');
+      }
+    } catch (err) {
+      // AI Service likely not running
+      setAiStatus('offline');
+    }
+  }, []);
+
+  // Detect Traffic Light (OPTIMIZED Hybrid: HSV + AI)
   const detectTrafficLight = useCallback(() => {
     if (!videoRef.current || !canvasRef.current || !isDetecting) return;
 
@@ -209,23 +285,30 @@ const TrafficSignalDetector = () => {
 
     if (video.readyState !== 4) return;
 
-    // 1. DOWNSCALE FOR SPEED
+    // 1. DOWNSCALE FOR SPEED & ACCURACY
+    // Small resolution reduces noise and improves performance
     const processWidth = 320;
     const processHeight = 240;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw full frame for User to see
+    // Draw for user
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // 2. SAMPLE CENTER AREA
+    // 2. SAMPLE CENTER AREA (Traffic lights are usually centered when user points camera)
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const sampleW = Math.min(canvas.width * 0.5, 300); // Max 300px scan area
-    const sampleH = Math.min(canvas.height * 0.5, 300);
+    const sampleW = Math.min(canvas.width * 0.6, 400); // 60% width scan
+    const sampleH = Math.min(canvas.height * 0.6, 400);
 
-    // Extract pixel data from center (Heavy operation, kept minimal)
+    // Draw scanning box on UI
+    if (isDetecting) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(centerX - sampleW / 2, centerY - sampleH / 2, sampleW, sampleH);
+    }
+
     const imageData = ctx.getImageData(
       centerX - sampleW / 2,
       centerY - sampleH / 2,
@@ -234,104 +317,123 @@ const TrafficSignalDetector = () => {
     );
     const data = imageData.data;
 
-    let redScore = 0, greenScore = 0, yellowScore = 0;
     let redCount = 0, greenCount = 0, yellowCount = 0;
 
-    // 3. FAST SCAN (Skip pixels)
-    // Scanning every 4th pixel is enough for color blobs
-    for (let i = 0; i < data.length; i += 16) { // i += 16 means skip 4 pixels (4 bytes each)
+    // 3. ROBUST HSV SCAN (Client Side - Fast)
+    // Skip every 4 pixels for performance (still very accurate)
+    for (let i = 0; i < data.length; i += 16) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
 
-      // Get brightness
-      const brightness = (r + g + b) / 3;
+      // Convert to HSV - distinct advantage per lighting condition
+      const [h, s, v] = rgbToHsv(r, g, b);
 
-      // Filter out dark stuff immediately
-      if (brightness < 100) continue;
+      // Traffic lights are BRIGHT (Value high) and COLORFUL (Saturation high)
+      // Filter out dull/dark objects (asphalt, cars, buildings)
+      if (v < 50 || s < 40) continue;
 
-      // 4. RATIO-BASED COLOR LOGIC (Better for Traffic Lights)
-
-      // RED: High Red, Low Green/Blue
-      if (r > 160 && r > (g + b) * 0.8) {
-        redScore += r;
-        redCount++;
+      // RED: Hue 0-15 or 340-360
+      // Expanded range for "Traffic Red" which can be orange-red
+      if ((h >= 0 && h <= 18) || (h >= 340 && h <= 360)) {
+        if (s > 60 && v > 60) redCount++;
       }
 
-      // GREEN: High Green (Result is often slightly Cyan/whitish in cameras)
-      // Allow some Blue, but Red must be low.
-      else if (g > 160 && g > r + 20 && g > b * 0.6) {
-        greenScore += g;
-        greenCount++;
+      // YELLOW: Hue 18-60
+      // Amber lights are very specific
+      else if (h > 18 && h < 60) {
+        if (s > 60 && v > 60) yellowCount++;
       }
 
-      // YELLOW: High Red + High Green, Low Blue
-      // Red and Green are similar.
-      else if (r > 160 && g > 140 && b < 120 && Math.abs(r - g) < 70) {
-        yellowScore += (r + g) / 2;
-        yellowCount++;
+      // GREEN: Hue 80-190 (allowing for bluish/cyan greens common in LEDs)
+      // Traffic green is often "Cyan" (Hue ~180) to distinct from foliage
+      else if (h >= 80 && h <= 190) {
+        if (s > 40 && v > 50) greenCount++;
       }
     }
 
-    // 5. DECISION LOGIC
+    // 4. THRESHOLD & CONFIDENCE CALCULATION
     let currentFrameStatus = 'No Signal';
     let currentConfidence = 0;
-    const totalPixels = data.length / 4;
-    const minPixelThreshold = totalPixels * 0.005; // 0.5% of area needs to comprise the light
 
-    if (redCount > minPixelThreshold && redScore > yellowScore && redScore > greenScore) {
+    // Total pixels scanned (divided by the skip step)
+    const totalPixelsScanned = data.length / 16;
+
+    // Require at least 0.5% of the scanned area to be the color 
+    // (Prevents single pixel noise)
+    const minPixelThreshold = totalPixelsScanned * 0.005;
+
+    // Find dominant color
+    if (redCount > yellowCount && redCount > greenCount && redCount > minPixelThreshold && redCount > 50) {
       currentFrameStatus = 'Red Light';
-      currentConfidence = Math.min(99, Math.round((redCount / (redCount + greenCount + yellowCount)) * 100));
-    } else if (yellowCount > minPixelThreshold && yellowScore > greenScore) {
+      currentConfidence = Math.min(99, Math.round((redCount / (redCount + greenCount + yellowCount + 1)) * 100)); // Normalized against other signals
+    } else if (yellowCount > redCount && yellowCount > greenCount && yellowCount > minPixelThreshold && yellowCount > 50) {
       currentFrameStatus = 'Yellow Light';
-      currentConfidence = Math.min(99, Math.round((yellowCount / (redCount + greenCount + yellowCount)) * 100));
-    } else if (greenCount > minPixelThreshold) {
+      currentConfidence = Math.min(99, Math.round((yellowCount / (redCount + greenCount + yellowCount + 1)) * 100));
+    } else if (greenCount > redCount && greenCount > yellowCount && greenCount > minPixelThreshold && greenCount > 50) {
       currentFrameStatus = 'Green Light';
-      currentConfidence = Math.min(99, Math.round((greenCount / (redCount + greenCount + yellowCount)) * 100));
+      currentConfidence = Math.min(99, Math.round((greenCount / (redCount + greenCount + yellowCount + 1)) * 100));
     }
 
-    // 6. ADAPTIVE CONSISTENCY (Speed vs Accuracy)
-    const consistencyRequired = currentConfidence > 80 ? 1 : 3;
+    // 5. HYBRID AI CHECK
+    if (isAiEnabled && Date.now() - lastAiCallTime.current > 500) {
+      // Create a blob from the canvas to send to AI
+      canvas.toBlob(blob => {
+        if (blob) detectWithAI(blob);
+      }, 'image/jpeg', 0.8);
+    }
 
+    // Override with AI result if valid
+    if (aiOverride.current.status && Date.now() < aiOverride.current.expires) {
+      currentFrameStatus = aiOverride.current.status;
+      // AI is authoritative
+    }
+
+    // 6. SMART CONSISTENCY CHECK
+    // Only change state if we see the SAME signal for multiple frames
+    // This removes "flicker" from noise
     statusHistory.current.push(currentFrameStatus);
-    if (statusHistory.current.length > consistencyRequired) {
+    if (statusHistory.current.length > 5) { // Check last 5 frames (~0.5s)
       statusHistory.current.shift();
     }
 
-    const allMatch = statusHistory.current.every(val => val === currentFrameStatus);
-    const isNewState = currentFrameStatus !== signalStatus;
-    const isSomethingDetected = currentFrameStatus !== 'No Signal';
+    const relevantHistory = statusHistory.current.filter(s => s !== 'No Signal');
+    const mostFrequent = relevantHistory.sort((a, b) =>
+      relevantHistory.filter(v => v === a).length - relevantHistory.filter(v => v === b).length
+    ).pop();
 
-    if (allMatch && isNewState && isSomethingDetected) {
-      setSignalStatus(currentFrameStatus);
-      setConfidence(currentConfidence);
+    const isStable = relevantHistory.filter(v => v === mostFrequent).length >= 3;
+
+    if (isStable && mostFrequent && mostFrequent !== signalStatus) {
+      setSignalStatus(mostFrequent);
+      setConfidence(currentConfidence > 0 ? currentConfidence : 50); // Fallback confidence
 
       // Feedback
-      speak(currentFrameStatus);
+      speak(mostFrequent);
 
-      // Haptics & Sound
-      if (currentFrameStatus === 'Red Light') {
-        playTone(350, 400);
+      if (mostFrequent === 'Red Light') {
+        playTone(350, 400); // Low warning tone
         vibrate([300, 50, 300]);
-      } else if (currentFrameStatus === 'Yellow Light') {
-        playTone(550, 300);
+      } else if (mostFrequent === 'Yellow Light') {
+        playTone(550, 300); // Mid tone
         vibrate([200]);
-      } else if (currentFrameStatus === 'Green Light') {
-        playTone(850, 200);
+      } else if (mostFrequent === 'Green Light') {
+        playTone(850, 200); // High positive tone
         vibrate([100, 50, 100]);
       }
 
-      addToHistory(currentFrameStatus, currentConfidence);
-
-      // Draw detection box
-      ctx.strokeStyle = currentFrameStatus === 'Red Light' ? '#ef4444' :
-        currentFrameStatus === 'Yellow Light' ? '#eab308' : '#22c55e';
-      ctx.lineWidth = 10;
-      ctx.strokeRect(centerX - sampleW / 2, centerY - sampleH / 2, sampleW, sampleH);
-    } else if (allMatch && !isSomethingDetected && signalStatus !== 'No Signal') {
-      // Clear status if lost signal
+      addToHistory(mostFrequent, currentConfidence);
+    } else if (statusHistory.current.every(s => s === 'No Signal')) {
       setSignalStatus('No Signal');
       setConfidence(0);
+    }
+
+    // Draw HUD Box if signal detected
+    if (signalStatus !== 'No Signal') {
+      ctx.strokeStyle = signalStatus === 'Red Light' ? '#ef4444' :
+        signalStatus === 'Yellow Light' ? '#eab308' : '#22c55e';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(centerX - sampleW / 2, centerY - sampleH / 2, sampleW, sampleH);
     }
 
   }, [signalStatus, speak, isDetecting, playTone, vibrate, addToHistory]);
@@ -367,7 +469,7 @@ const TrafficSignalDetector = () => {
             Traffic Signal <span className="text-blue-500">Detector</span>
           </h1>
           <p className="text-gray-400 text-sm md:text-base mb-4">
-            Designed for color blind users with voice, sound, and haptic feedback
+            Professional AI-native detection for color blind accessibility
           </p>
 
           {/* Quick Stats */}
@@ -446,6 +548,7 @@ const TrafficSignalDetector = () => {
                             style={{ width: `${confidence}%` }}
                           />
                         </div>
+                        {aiStatus === 'active' && <div className="text-[10px] text-right text-blue-400 mt-1">AI Verified</div>}
                       </div>
                     </div>
                   </div>
@@ -524,7 +627,7 @@ const TrafficSignalDetector = () => {
             </div>
 
             {/* Settings Panel */}
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
               <button
                 onClick={() => setVoiceEnabled(!voiceEnabled)}
                 className={`px-4 py-3 rounded-xl font-medium transition-all ${voiceEnabled
@@ -552,6 +655,21 @@ const TrafficSignalDetector = () => {
                   }`}
               >
                 📳 Haptic
+              </button>
+
+              <button
+                onClick={() => setIsAiEnabled(!isAiEnabled)}
+                className={`px-4 py-3 rounded-xl font-medium transition-all border ${isAiEnabled
+                  ? 'bg-purple-600 border-purple-500 text-white'
+                  : 'bg-gray-800 border-gray-700 text-gray-400'
+                  }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  🤖 AI Mode
+                  {isAiEnabled && (
+                    <span className={`w-2 h-2 rounded-full ${aiStatus === 'active' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                  )}
+                </span>
               </button>
             </div>
           </div>

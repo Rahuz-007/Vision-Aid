@@ -24,8 +24,50 @@ import { useColorHistory } from '../../../context/ColorHistoryContext';
 const ntc = {
     names: [
         ["000000", "Black"], ["000080", "Navy Blue"], ["0000C8", "Dark Blue"], ["0000FF", "Blue"],
-        ["000741", "Dark Blue"], ["001B1C", "Black"], ["002387", "Dark Blue"], ["002900", "Dark Green"],
-        ["FFFFFF", "White"], ["FFFF00", "Yellow"], ["FF0000", "Red"], ["00FF00", "Green"]
+        ["000741", "Stratos"], ["001B1C", "Swamp"], ["002387", "Resolution Blue"], ["002900", "Deep Fir"],
+        ["002E63", "Cool Black"], ["002FA7", "International Klein Blue"], ["003153", "Prussian Blue"], ["003366", "Midnight Blue"],
+        ["003399", "Smalt"], ["003532", "Deep Teal"], ["003E40", "Teal"], ["004620", "Biogeo"],
+        ["0047AB", "Cobalt"], ["004950", "Sherpa Blue"], ["0056A7", "Endeavour"], ["00581A", "Camarone"],
+        ["0066CC", "Science Blue"], ["0066FF", "Blue Ribbon"], ["00755E", "Rain Forest"], ["0076A3", "Allports"],
+        ["007BA7", "Cerulean"], ["007EC7", "Lochmara"], ["007FFF", "Azure Radiance"], ["008080", "Teal"],
+        ["0095B6", "Bondi Blue"], ["009DC4", "Pacific Blue"], ["00A693", "Persian Green"], ["00A86B", "Jade"],
+        ["00CC99", "Caribbean Green"], ["00CCCC", "Robin's Egg Blue"], ["00FF00", "Lime"], ["00FF7F", "Spring Green"],
+        ["00FFFF", "Cyan / Aqua"], ["01796F", "Pine Green"], ["01D758", "Malachite"], ["041004", "Midnight Moss"],
+        ["082567", "Downriver"], ["0C8990", "Blue Chill"], ["10121D", "Vulcan"], ["101B4D", "Cornflower Blue"],
+        ["191970", "Midnight Blue"], ["1C1C1C", "Rich Black"], ["1F6349", "Blue Stone"], ["20B2AA", "Light Sea Green"],
+        ["228B22", "Forest Green"], ["240A40", "Violet"], ["256D7B", "William"], ["273089", "Violent Violet"],
+        ["281E15", "Oil"], ["2A52BE", "Cerulean Blue"], ["2B3202", "Woodland"], ["2C0E8C", "Persian Blue"],
+        ["2C1632", "Revolver"], ["2E2F30", "Charcoal"], ["2E8B57", "Sea Green"], ["32CD32", "Lime Green"],
+        ["36454F", "Charcoal"], ["3B000B", "Bordeux"], ["3B3C36", "Olive Drab"], ["3E2062", "Valhalla"],
+        ["40E0D0", "Turquoise"], ["4169E1", "Royal Blue"], ["420D09", "Dark Maroon"], ["4682B4", "Steel Blue"],
+        ["483C32", "Taupe"], ["4B0082", "Indigo"], ["4C3024", "Saddle Brown"], ["556B2F", "Dark Olive Green"],
+        ["5F9EA0", "Cadet Blue"], ["6495ED", "Cornflower Blue"], ["660000", "Maroon"], ["660066", "Purple"],
+        ["663399", "Rebecca Purple"], ["66CDAA", "Medium Aquamarine"], ["696969", "Dim Gray"], ["6A5ACD", "Slate Blue"],
+        ["6B8E23", "Olive Drab"], ["708090", "Slate Gray"], ["778899", "Light Slate Gray"], ["78866B", "Camouflage Green"],
+        ["7B3F00", "Chocolate"], ["7B68EE", "Medium Slate Blue"], ["7C0A02", "Barn Red"], ["7FFF00", "Chartreuse"],
+        ["7FFFD4", "Aquamarine"], ["800000", "Maroon"], ["800080", "Purple"], ["808000", "Olive"],
+        ["808080", "Gray"], ["87CEEB", "Sky Blue"], ["87CEFA", "Light Sky Blue"], ["8A2BE2", "Blue Violet"],
+        ["8B0000", "Dark Red"], ["8B008B", "Dark Magenta"], ["8B4513", "Saddle Brown"], ["8FBC8F", "Dark Sea Green"],
+        ["90EE90", "Light Green"], ["9370DB", "Medium Purple"], ["9400D3", "Dark Violet"], ["98FB98", "Pale Green"],
+        ["9932CC", "Dark Orchid"], ["9ACD32", "Yellow Green"], ["A0522D", "Sienna"], ["A52A2A", "Brown"],
+        ["A9A9A9", "Dark Gray"], ["ADFF2F", "Green Yellow"], ["AFEEEE", "Pale Turquoise"], ["B0C4DE", "Light Steel Blue"],
+        ["B22222", "Fire Brick"], ["B8860B", "Dark Goldenrod"], ["BA55D3", "Medium Orchid"], ["BC8F8F", "Rosy Brown"],
+        ["BDB76B", "Dark Khaki"], ["C0C0C0", "Silver"], ["C71585", "Medium Violet Red"], ["CD5C5C", "Indian Red"],
+        ["CD853F", "Peru"], ["D2691E", "Chocolate"], ["D2B48C", "Tan"], ["D3D3D3", "Light Gray"],
+        ["D8BFD8", "Thistle"], ["DA70D6", "Orchid"], ["DAA520", "Goldenrod"], ["DB7093", "Pale Violet Red"],
+        ["DC143C", "Crimson"], ["DCDCDC", "Gainsboro"], ["DDA0DD", "Plum"], ["DE3163", "Cerise"],
+        ["E0FFFF", "Light Cyan"], ["E6E6FA", "Lavender"], ["E9967A", "Dark Salmon"], ["EE82EE", "Violet"],
+        ["EEE8AA", "Pale Goldenrod"], ["F08080", "Light Coral"], ["F0E68C", "Khaki"], ["F0F8FF", "Alice Blue"],
+        ["F4A460", "Sandy Brown"], ["F5DEB3", "Wheat"], ["F5F5DC", "Beige"], ["F8F8FF", "Ghost White"],
+        ["FA8072", "Salmon"], ["FAEBD7", "Antique White"], ["FAF0E6", "Linen"], ["FBCEB1", "Apricot"],
+        ["FDF5E6", "Old Lace"], ["FF0000", "Red"], ["FF00FF", "Magenta / Fuchsia"], ["FF1493", "Deep Pink"],
+        ["FF4500", "Orange Red"], ["FF6347", "Tomato"], ["FF69B4", "Hot Pink"], ["FF7F50", "Coral"],
+        ["FF8C00", "Dark Orange"], ["FFA07A", "Light Salmon"], ["FFA500", "Orange"], ["FFB6C1", "Light Pink"],
+        ["FFC0CB", "Pink"], ["FFD700", "Gold"], ["FFDAB9", "Peach Puff"], ["FFDEAD", "Navajo White"],
+        ["FFE4B5", "Moccasin"], ["FFE4C4", "Bisque"], ["FFE4E1", "Misty Rose"], ["FFEBCD", "Blanched Almond"],
+        ["FFEFD5", "Papaya Whip"], ["FFF0F5", "Lavender Blush"], ["FFF5EE", "Seashell"], ["FFF8DC", "Cornsilk"],
+        ["FFFACD", "Lemon Chiffon"], ["FFFAF0", "Floral White"], ["FFFAFA", "Snow"], ["FFFF00", "Yellow"],
+        ["FFFFE0", "Light Yellow"], ["FFFFF0", "Ivory"], ["FFFFFF", "White"]
     ],
     name: function (color) {
         color = color.toUpperCase();
@@ -58,6 +100,60 @@ const ntc = {
             h /= 6;
         }
         return [Math.floor(h * 360), Math.floor(s * 100), Math.floor(l * 100)];
+    },
+    // CMYK Conversion
+    rgbToCmyk: (r, g, b) => {
+        let c = 1 - (r / 255);
+        let m = 1 - (g / 255);
+        let y = 1 - (b / 255);
+        let k = Math.min(c, Math.min(m, y));
+        c = (c - k) / (1 - k);
+        m = (m - k) / (1 - k);
+        y = (y - k) / (1 - k);
+        return [Math.round(c * 100) || 0, Math.round(m * 100) || 0, Math.round(y * 100) || 0, Math.round(k * 100) || 0];
+    },
+    // Color Blindness Simulation (Brettel et al. method approx)
+    simulate: (r, g, b, type) => {
+        // Linearize RGB
+        r = r <= 0.04045 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+        g = g <= 0.04045 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+        b = b <= 0.04045 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+
+        // Convert to LMS
+        const L = 17.8824 * r + 43.5161 * g + 4.11935 * b;
+        const M = 3.45565 * r + 27.1554 * g + 3.86714 * b;
+        var S = 0.0299566 * r + 0.184309 * g + 1.46709 * b;
+
+        // Simulate
+        if (type === 'protanopia') {
+            const L2 = 2.02344 * M - 2.52581 * S;
+            // Protanopia LMS
+            var finalL = L2, finalM = M, finalS = S;
+        } else if (type === 'deuteranopia') {
+            const M2 = 0.494207 * L + 1.24827 * S;
+            // Deuteranopia LMS
+            var finalL = L, finalM = M2, finalS = S;
+        } else if (type === 'tritanopia') {
+            const S2 = -0.395913 * L + 0.801109 * M;
+            // Tritanopia LMS
+            var finalL = L, finalM = M, finalS = S2;
+        }
+
+        // Convert back to RGB
+        let rr = 0.0809444479 * finalL + -0.130504409 * finalM + 0.116721066 * finalS;
+        let gg = -0.0102485335 * finalL + 0.0540193266 * finalM + -0.113614708 * finalS;
+        let bb = -0.000365296938 * finalL + -0.00412161469 * finalM + 0.693511405 * finalS;
+
+        // Gamma correct
+        rr = rr <= 0.0031308 ? 12.92 * rr : 1.055 * Math.pow(rr, 1 / 2.4) - 0.055;
+        gg = gg <= 0.0031308 ? 12.92 * gg : 1.055 * Math.pow(gg, 1 / 2.4) - 0.055;
+        bb = bb <= 0.0031308 ? 12.92 * bb : 1.055 * Math.pow(bb, 1 / 2.4) - 0.055;
+
+        return [
+            Math.min(255, Math.max(0, Math.round(rr * 255))),
+            Math.min(255, Math.max(0, Math.round(gg * 255))),
+            Math.min(255, Math.max(0, Math.round(bb * 255)))
+        ];
     }
 };
 
@@ -74,14 +170,18 @@ const ColorDetector = () => {
     const [matchItem1, setMatchItem1] = useState(null);
     const [matchItem2, setMatchItem2] = useState(null);
     const [matchVerdict, setMatchVerdict] = useState(null);
+    const [occasionAdvice, setOccasionAdvice] = useState(null); // New Feature: Occasion AI
+    const [showTryOn, setShowTryOn] = useState(false); // New Feature: Virtual Preview
 
     // Pattern Feature
     const [patternEnabled, setPatternEnabled] = useState(false);
+    const [arEnabled, setArEnabled] = useState(false);
 
     const [selectedColor, setSelectedColor] = useState('#8B4513');
     const [targetFindColor, setTargetFindColor] = useState({ hue: 0, name: 'Red' });
     const [voiceEnabled, setVoiceEnabled] = useState(true);
     const [colorInfo, setColorInfo] = useState(null);
+    const [detailTab, setDetailTab] = useState('info'); // 'info', 'harmony', 'access'
 
     const analyzeColor = useCallback((currentHex) => {
         const r = parseInt(currentHex.substr(1, 2), 16);
@@ -89,6 +189,12 @@ const ColorDetector = () => {
         const b = parseInt(currentHex.substr(5, 2), 16);
         const [h, s, l] = ntc.rgbToHsl(r, g, b);
 
+        // Get Specific Name (Reliable)
+        const ntcMatch = ntc.name(currentHex);
+        const specificName = ntcMatch[1];
+        const isExactMatch = ntcMatch[2]; // exact match bool
+
+        // Get Descriptive / Family Name (General Understanding)
         let simpleName = "Gray";
         let adjective = "";
         if (l < 12) simpleName = "Black";
@@ -110,7 +216,8 @@ const ColorDetector = () => {
             if (simpleName !== "Black" && simpleName !== "White") {
                 if (l < 25) adjective = "Dark ";
                 else if (l > 75) adjective = "Pale ";
-                else if (s > 80) adjective = "Bright ";
+                else if (s > 80) adjective = "Bright "; // Use Bright for high saturation
+                else if (s < 30) adjective = "Muted ";
             }
         }
         if ((simpleName === "Orange" || simpleName === "Yellow") && l < 50) {
@@ -118,10 +225,30 @@ const ColorDetector = () => {
             adjective = l < 30 ? "Dark " : "";
         }
 
-        const finalName = adjective + simpleName;
+        const descriptiveName = adjective + simpleName;
+
+        // Final Name Logic: Show "Specific (General)"
+        // If specific name is "Black" or identical, just show one.
+        let finalName = specificName;
+        if (!specificName.toLowerCase().includes(simpleName.toLowerCase())) {
+            finalName = `${specificName} (${simpleName})`;
+        }
+
         const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         const compH = (h + 180) % 360;
         const compColor = `hsl(${compH}, ${s}%, ${l}%)`;
+
+        // Harmonies
+        const analogous1 = `hsl(${(h + 30) % 360}, ${s}%, ${l}%)`;
+        const analogous2 = `hsl(${(h - 30 + 360) % 360}, ${s}%, ${l}%)`;
+        const triadic1 = `hsl(${(h + 120) % 360}, ${s}%, ${l}%)`;
+        const triadic2 = `hsl(${(h + 240) % 360}, ${s}%, ${l}%)`;
+        const tetradic = `hsl(${(h + 90) % 360}, ${s}%, ${l}%)`;
+
+        // Simulations
+        const protan = ntc.simulate(r / 255, g / 255, b / 255, 'protanopia');
+        const deutan = ntc.simulate(r / 255, g / 255, b / 255, 'deuteranopia');
+        const tritan = ntc.simulate(r / 255, g / 255, b / 255, 'tritanopia');
 
         // Detailed Contrast Report
         let contrastReport = "Good visibility";
@@ -133,12 +260,58 @@ const ColorDetector = () => {
             name: finalName,
             hex: currentHex,
             rgb: `rgb(${r}, ${g}, ${b})`,
+            cmyk: ntc.rgbToCmyk(r, g, b),
             luminance,
             contrast: contrastReport,
             complementary: compColor,
+            harmonies: { analogous: [analogous1, analogous2], triadic: [triadic1, triadic2], tetradic },
+            simulations: {
+                protan: `rgb(${protan[0]}, ${protan[1]}, ${protan[2]})`,
+                deutan: `rgb(${deutan[0]}, ${deutan[1]}, ${deutan[2]})`,
+                tritan: `rgb(${tritan[0]}, ${tritan[1]}, ${tritan[2]})`
+            },
             hsl: [h, s, l]
         });
     }, []);
+
+    // NEW Feature: Smart Occasion Logic
+    const getOccasionAdvice = (c1, c2) => {
+        const [h1, s1, l1] = c1.hsl;
+        const [h2, s2, l2] = c2.hsl;
+
+        let advice = { casual: 'Yes', business: 'Maybe', formal: 'No', vibe: 'Undefined' };
+
+        // Check for high contrast / neon (Casual/Sporty)
+        if (s1 > 70 || s2 > 70) {
+            advice.casual = "Perfect for sportswear or parties!";
+            advice.business = "Too bright for traditional offices.";
+            advice.formal = "Avoid unless it's a creative black tie.";
+            advice.vibe = "Energetic & Bold";
+        }
+        // Dark & Neutral (Business)
+        else if (l1 < 40 && l2 < 40 && s1 < 40 && s2 < 40) {
+            advice.business = "Excellent. Professional and authoritative.";
+            advice.formal = "Very safe choice.";
+            advice.casual = "A bit serious for a beach day.";
+            advice.vibe = "Professional & Sleek";
+        }
+        // Light & Pastel (Spring/Date)
+        else if (l1 > 60 && l2 > 60) {
+            advice.casual = "Great for spring outings or dates.";
+            advice.business = "Good for creative fields.";
+            advice.formal = "Acceptable for day weddings.";
+            advice.vibe = "Soft & Approachable";
+        }
+        // Classic Contrast (Navy/White, Black/White)
+        else if ((l1 < 20 && l2 > 80) || (l1 > 80 && l2 < 20)) {
+            advice.business = "Classic power suit combo.";
+            advice.formal = "Timeless elegance.";
+            advice.casual = "Always works.";
+            advice.vibe = "Timeless & Sharp";
+        }
+
+        return advice;
+    };
 
     const captureMatchItem = (slot) => {
         if (!colorInfo) return;
@@ -172,7 +345,11 @@ const ColorDetector = () => {
             else { verdict = "Risky Match"; score = 4; reason = "Unusual combo."; }
             if (Math.abs(s1 - s2) > 60) { score -= 2; reason += " Saturation mismatch."; }
         }
+
         setMatchVerdict({ title: verdict, score, reason });
+
+        // Trigger Occasion Advice
+        setOccasionAdvice(getOccasionAdvice(c1, c2));
     };
 
     const saveToHistory = () => {
@@ -335,6 +512,39 @@ const ColorDetector = () => {
             const hex = '#' + ((1 << 24) + (finalR << 16) + (finalG << 8) + finalB).toString(16).slice(1).toUpperCase();
             analyzeColor(hex);
 
+            // AR Mode Logic: Scan Random Points for Tags
+            if (arEnabled && !patternEnabled && mode !== 'find') {
+                const points = [
+                    { x: v.videoWidth * 0.2, y: v.videoHeight * 0.3 },
+                    { x: v.videoWidth * 0.8, y: v.videoHeight * 0.3 },
+                    { x: v.videoWidth * 0.2, y: v.videoHeight * 0.7 },
+                    { x: v.videoWidth * 0.8, y: v.videoHeight * 0.7 }
+                ];
+
+                points.forEach(pt => {
+                    const pData = ctx.getImageData(pt.x, pt.y, 1, 1).data;
+                    const pHex = '#' + ((1 << 24) + (pData[0] << 16) + (pData[1] << 8) + pData[2]).toString(16).slice(1).toUpperCase();
+                    const pName = ntc.name(pHex)[1];
+
+                    // Draw Tag
+                    overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    overlayCtx.roundRect(pt.x - 40, pt.y - 15, 80, 24, 6);
+                    overlayCtx.fill();
+                    overlayCtx.fillStyle = '#fff';
+                    overlayCtx.font = 'bold 10px sans-serif';
+                    overlayCtx.textAlign = 'center';
+                    overlayCtx.fillText(pName, pt.x, pt.y + 1);
+
+                    // Draw Dot
+                    overlayCtx.beginPath();
+                    overlayCtx.arc(pt.x, pt.y + 15, 3, 0, 2 * Math.PI);
+                    overlayCtx.fillStyle = pHex;
+                    overlayCtx.strokeStyle = '#fff';
+                    overlayCtx.stroke();
+                    overlayCtx.fill();
+                });
+            }
+
             if (!patternEnabled && mode !== 'find') {
                 const ringColor = (finalR + finalG + finalB) / 3 > 128 ? '#000' : '#fff';
                 overlayCtx.strokeStyle = ringColor; overlayCtx.lineWidth = 4; overlayCtx.beginPath(); overlayCtx.arc(cx, cy, 42, 0, 6.28); overlayCtx.stroke();
@@ -343,7 +553,7 @@ const ColorDetector = () => {
 
         }, 300);
         return () => clearInterval(interval);
-    }, [isDetecting, analyzeColor, mode, patternEnabled, targetFindColor]);
+    }, [isDetecting, analyzeColor, mode, patternEnabled, targetFindColor, arEnabled]);
 
     return (
         <div className="min-h-screen bg-black text-white p-4 pt-20 pb-20 font-sans">
@@ -374,12 +584,22 @@ const ColorDetector = () => {
 
                         {/* Pattern Toggle Button */}
                         {mode === 'camera' && isDetecting && (
-                            <button
-                                onClick={() => setPatternEnabled(!patternEnabled)}
-                                className={`absolute top-4 right-4 p-2 rounded-full border-2 ${patternEnabled ? 'bg-yellow-500 border-white text-black' : 'bg-black/50 border-gray-500 text-gray-400'}`}
-                            >
-                                <FaBraille />
-                            </button>
+                            <div className="absolute top-4 right-4 flex gap-2">
+                                <button
+                                    onClick={() => { setArEnabled(!arEnabled); if (patternEnabled) setPatternEnabled(false); }}
+                                    className={`p-2 rounded-full border-2 ${arEnabled ? 'bg-blue-500 border-white text-white' : 'bg-black/50 border-gray-500 text-gray-400'}`}
+                                    title="Enable AR Color Tags"
+                                >
+                                    <FaGlasses />
+                                </button>
+                                <button
+                                    onClick={() => { setPatternEnabled(!patternEnabled); if (arEnabled) setArEnabled(false); }}
+                                    className={`p-2 rounded-full border-2 ${patternEnabled ? 'bg-yellow-500 border-white text-black' : 'bg-black/50 border-gray-500 text-gray-400'}`}
+                                    title="Enable Pattern Overlay"
+                                >
+                                    <FaBraille />
+                                </button>
+                            </div>
                         )}
 
                         {/* MANUAL OVERLAY */}
@@ -424,13 +644,66 @@ const ColorDetector = () => {
                                         </div>
                                     </div>
                                     {matchVerdict && (
-                                        <div className={`p-4 rounded-xl border-2 mb-4 ${matchVerdict.score > 6 ? 'border-green-500 bg-green-900/20' : 'border-red-500 bg-red-900/20'}`}>
-                                            <div className="text-3xl mb-2">{matchVerdict.score > 6 ? <FaCheck className="inline text-green-500" /> : <FaExclamationTriangle className="inline text-red-500" />}</div>
-                                            <h3 className="text-xl font-bold mb-1">{matchVerdict.title}</h3>
-                                            <p className="text-sm opacity-80">{matchVerdict.reason}</p>
+                                        <div className="space-y-4">
+                                            {/* Verdict Card */}
+                                            <div className={`p-4 rounded-xl border-2 ${matchVerdict.score > 6 ? 'border-green-500 bg-green-900/20' : 'border-red-500 bg-red-900/20'}`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="text-3xl">{matchVerdict.score > 6 ? <FaCheck className="text-green-500" /> : <FaExclamationTriangle className="text-red-500" />}</div>
+                                                    <div className="text-2xl font-black opacity-50">{matchVerdict.score}/10</div>
+                                                </div>
+                                                <h3 className="text-xl font-bold mb-1">{matchVerdict.title}</h3>
+                                                <p className="text-sm opacity-80">{matchVerdict.reason}</p>
+                                            </div>
+
+                                            {/* Occasion Advice */}
+                                            {occasionAdvice && (
+                                                <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 text-left">
+                                                    <h4 className="text-sm font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><FaGlasses /> Style Vibe: <span className="text-white">{occasionAdvice.vibe}</span></h4>
+                                                    <div className="space-y-2 text-sm">
+                                                        <div className="flex justify-between"><span className="text-gray-400">🏢 Work:</span> <span>{occasionAdvice.business}</span></div>
+                                                        <div className="flex justify-between"><span className="text-gray-400">🏖️ Casual:</span> <span>{occasionAdvice.casual}</span></div>
+                                                        <div className="flex justify-between"><span className="text-gray-400">🎩 Formal:</span> <span>{occasionAdvice.formal}</span></div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Virtual Try-On Toggle */}
+                                            <button
+                                                onClick={() => setShowTryOn(!showTryOn)}
+                                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold font-mono text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+                                            >
+                                                {showTryOn ? 'Hide Preview' : '👕 View Virtual Try-On'}
+                                            </button>
+
+                                            {/* SVG Mannequin Preview */}
+                                            {showTryOn && (
+                                                <div className="bg-white rounded-xl p-4 flex justify-center h-64 relative overflow-hidden">
+                                                    {/* Simple SVG T-Shirt and Pants representation */}
+                                                    <svg viewBox="0 0 200 300" className="h-full drop-shadow-xl">
+                                                        {/* Shirt */}
+                                                        <path
+                                                            d="M60,20 L80,20 L85,30 L90,20 L110,20 L110,25 L140,50 L130,70 L110,60 L110,140 L60,140 L60,60 L40,70 L30,50 L60,25 Z"
+                                                            fill={matchItem1?.hex || '#ccc'}
+                                                            stroke="#333" strokeWidth="2"
+                                                        />
+                                                        {/* Pants */}
+                                                        <path
+                                                            d="M60,140 L110,140 L115,280 L90,280 L85,180 L80,280 L55,280 Z"
+                                                            fill={matchItem2?.hex || '#333'}
+                                                            stroke="#333" strokeWidth="2"
+                                                        />
+                                                        {/* Head (Generic) */}
+                                                        <circle cx="85" cy="20" r="15" fill="#e0ac69" />
+                                                    </svg>
+                                                    <div className="absolute bottom-2 right-2 text-black text-xs font-bold opacity-50">Preview Mode</div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-                                    <button onClick={() => { setMatchItem1(null); setMatchItem2(null); setMatchVerdict(null); }} className="text-gray-500 text-sm hover:text-white">Reset</button>
+                                    <div className="flex gap-2 mt-4">
+                                        <button onClick={() => { setMatchItem1(null); setMatchItem2(null); setMatchVerdict(null); setOccasionAdvice(null); setShowTryOn(false); }} className="flex-1 py-3 bg-gray-800 rounded-xl text-gray-400 hover:text-white transition-all font-bold">New Match</button>
+                                        {matchVerdict && <button className="flex-1 py-3 bg-gray-800 rounded-xl text-blue-400 hover:text-blue-300 transition-all font-bold flex justify-center items-center gap-2"><FaCopy /> Share Look</button>}
+                                    </div>
                                 </motion.div>
                             ) : mode === 'find' ? (
                                 /* --- THIS IS THE RESTORED FIND MODE UI --- */
@@ -465,9 +738,54 @@ const ColorDetector = () => {
                             ) : (
                                 colorInfo ? (
                                     <motion.div key={colorInfo.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full">
-                                        <div className="mb-8">
-                                            <h2 className="text-5xl font-black mb-2 tracking-tight">{colorInfo.name}</h2>
-                                            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-800 rounded-full text-sm text-gray-400 border border-gray-700 font-mono transition">{colorInfo.hex}</div>
+                                        <div className="mb-4">
+                                            <h2 className="text-4xl md:text-5xl font-black mb-1">{colorInfo.name}</h2>
+                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-md text-xs tracking-wider text-gray-400 border border-gray-700 font-mono mb-4">{colorInfo.hex}</div>
+
+                                            {/* Feature Tabs */}
+                                            <div className="flex bg-gray-800 p-1 rounded-xl mb-4">
+                                                <button onClick={() => setDetailTab('info')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'info' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Details</button>
+                                                <button onClick={() => setDetailTab('harmony')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'harmony' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Harmonies</button>
+                                                <button onClick={() => setDetailTab('access')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'access' ? 'bg-teal-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Blindness</button>
+                                            </div>
+
+                                            {/* Tab Content */}
+                                            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 min-h-[180px]">
+                                                {detailTab === 'info' && (
+                                                    <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-left">
+                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">RGB</p><p className="font-mono text-sm">{colorInfo.rgb}</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">HSL</p><p className="font-mono text-sm">{colorInfo.hsl[0]}°, {colorInfo.hsl[1]}%, {colorInfo.hsl[2]}%</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">CMYK</p><p className="font-mono text-sm">{colorInfo.cmyk?.join(', ')}</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">Contrast</p><p className="text-sm text-green-400">{colorInfo.contrast}</p></div>
+                                                    </div>
+                                                )}
+
+                                                {detailTab === 'harmony' && (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.complementary }}></div><span className="text-xs">Complementary</span></div>
+                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.analogous[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.analogous[1] }}></div><span className="text-xs">Analogous</span></div>
+                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.triadic[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.triadic[1] }}></div><span className="text-xs">Triadic</span></div>
+                                                    </div>
+                                                )}
+
+                                                {detailTab === 'access' && (
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div className="text-center">
+                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-600" style={{ background: colorInfo.simulations.protan }}></div>
+                                                            <p className="text-[10px] text-gray-400">Protanopia</p>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-600" style={{ background: colorInfo.simulations.deutan }}></div>
+                                                            <p className="text-[10px] text-gray-400">Deuteranopia</p>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-600" style={{ background: colorInfo.simulations.tritan }}></div>
+                                                            <p className="text-[10px] text-gray-400">Tritanopia</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto">
                                             <button onClick={() => speak(colorInfo.name)} className="bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold flex items-center justify-center gap-2"><FaVolumeUp /> Speak</button>

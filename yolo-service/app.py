@@ -330,6 +330,9 @@ def detect() -> Any:
     except Exception as e:
         return jsonify({"error": f"Invalid image: {str(e)}"}), 400
 
+    # Get detection mode from request form data or query params
+    detection_type = request.form.get("type", "traffic") # 'traffic' or 'general'
+
     # Lower confidence to 0.15 to ensure we don't miss smaller objects
     results = yolo_service.detect(image, conf=0.15)
 
@@ -342,16 +345,22 @@ def detect() -> Any:
                                         result.boxes.conf.tolist(), 
                                         result.boxes.cls.tolist()):
             class_name = yolo_service.model_names.get(int(cls_id), str(cls_id))
-            if class_name != "traffic light":
-                continue
+            
+            # Filter based on detection type
+            if detection_type == "traffic":
+                if class_name != "traffic light":
+                    continue
+            # For "general", we accept all classes
 
             x1, y1, x2, y2 = map(float, coords)
             box = {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
             
-            # Analyze color using the dataset
-            color = analyze_traffic_light_color(image, box, color_db)
+            # Additional processing for traffic lights
+            color = "unknown"
+            if class_name == "traffic light":
+                color = analyze_traffic_light_color(image, box, color_db)
             
-            # Estimate distance
+            # Estimate distance (approximate for all objects based on relative size)
             distance = calculate_distance(box)
             
             detections.append({
