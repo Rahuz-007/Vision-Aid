@@ -606,8 +606,8 @@ const ColorBlindnessSimulator = () => {
                 </div>
             </div>
 
-            {/* SVG Filters Definition (Hidden) */}
-            <svg className="hidden">
+            {/* SVG Filters Definition */}
+            <svg style={{ visibility: 'hidden', position: 'absolute', width: '0', height: '0', overflow: 'hidden' }} aria-hidden="true">
                 <defs>
                     <filter id="protanopia">
                         <feColorMatrix type="matrix" values="0.567, 0.433, 0, 0, 0 0.558, 0.442, 0, 0, 0 0, 0.242, 0.758, 0, 0 0, 0, 0, 1, 0" />

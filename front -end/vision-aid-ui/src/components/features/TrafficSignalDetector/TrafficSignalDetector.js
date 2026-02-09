@@ -494,7 +494,7 @@ const TrafficSignalDetector = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Camera View - Main */}
           <div className="lg:col-span-2">
-            <div className="relative aspect-video bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-800">
+            <div className="relative min-h-[500px] md:aspect-video bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-800">
 
               <video
                 ref={videoRef}
@@ -594,8 +594,8 @@ const TrafficSignalDetector = () => {
 
               {/* Camera Access Screen */}
               {!isDetecting && (
-                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center z-30">
-                  <div className="p-8 rounded-3xl bg-gray-900/50 border border-white/5 text-center max-w-md mx-4">
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4">
+                  <div className="p-6 rounded-3xl bg-gray-900/50 border border-white/5 text-center max-w-md w-full max-h-full overflow-y-auto">
                     <div className="w-20 h-20 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/20">
                       <FaCamera className="text-4xl text-blue-500" />
                     </div>

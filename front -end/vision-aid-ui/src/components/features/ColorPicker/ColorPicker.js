@@ -370,24 +370,63 @@ const ColorDetector = () => {
     }, [voiceEnabled]);
 
     const startCamera = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            toast.error("Camera not supported on this browser.");
+            return;
+        }
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 } } });
+            // Mobile-optimized constraints
+            const constraints = {
+                video: {
+                    facingMode: 'environment', // Prefer rear camera
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            };
+
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (err) {
+                // Fallback for devices that don't support 'environment' or specific resolution
+                console.warn("Retrying with fallback constraints...", err);
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            }
+
             streamRef.current = stream;
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.onloadedmetadata = () => {
-                    videoRef.current.play();
-                    setIsDetecting(true);
+                // Important for iOS compatibility
+                videoRef.current.setAttribute('playsinline', 'true');
 
-                    if (mode === 'find') {
-                        toast("Scanning for " + targetFindColor.name, { icon: '🔍' });
-                        speak("Scanning for " + targetFindColor.name);
-                    } else {
-                        toast.success("Active");
-                    }
-                };
+                await new Promise((resolve) => {
+                    videoRef.current.onloadedmetadata = () => {
+                        resolve();
+                    };
+                });
+
+                await videoRef.current.play();
+                setIsDetecting(true);
+
+                if (mode === 'find') {
+                    toast("Scanning for " + targetFindColor.name, { icon: '🔍' });
+                    speak("Scanning for " + targetFindColor.name);
+                } else {
+                    toast.success("Camera Active");
+                }
             }
-        } catch (e) { toast.error("Camera Error"); }
+        } catch (e) {
+            console.error("Camera Start Error:", e);
+            if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                toast.error("Permission denied. Please allow camera access.");
+            } else if (e.name === 'NotFoundError') {
+                toast.error("No camera found.");
+            } else {
+                toast.error("Could not start camera. Ensure you are on HTTPS.");
+            }
+        }
     };
 
     const stopCamera = () => {

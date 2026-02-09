@@ -1,4 +1,22 @@
 name: Deploy to Production
+
+# ==============================================================================
+# VISION AID - PRODUCTION DEPLOYMENT WORKFLOW
+# ==============================================================================
+# This workflow automates the deployment process for the Vision Aid application.
+# It handles building Docker images, pushing them to the registry, and deploying
+# to both staging and production environments.
+#
+# TRIGGERS:
+# - Push to 'main' or 'master' branches
+# - Creation of version tags (e.g., v1.0.0)
+# - Manual trigger via GitHub Actions UI
+#
+# PRE-REQUISITES:
+# - GitHub Secrets must be configured (DOCKER_USERNAME, DOCKER_PASSWORD, SSH_KEYS, etc.)
+# - Docker Registry must be accessible
+# ==============================================================================
+
 on:
   push:
     branches:
@@ -22,7 +40,10 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build Docker Images
+  # ----------------------------------------------------------------------------
+  # JOB: BUILD DOCKER IMAGES
+  # Builds and pushes optimized Docker images for Backend and Frontend services.
+  # ----------------------------------------------------------------------------
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
@@ -35,20 +56,22 @@ jobs:
         service: [backend, frontend]
 
     steps:
-      - name: Checkout code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for accurate versioning
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -61,7 +84,7 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Backend image
+      - name: Build and Push Backend Image
         if: matrix.service == 'backend'
         uses: docker/build-push-action@v5
         with:
@@ -73,7 +96,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push Frontend image
+      - name: Build and Push Frontend Image
         if: matrix.service == 'frontend'
         uses: docker/build-push-action@v5
         with:
@@ -90,7 +113,11 @@ jobs:
             REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
             REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
 
-  # Deploy to Server (Optional - for VPS/dedicated server)
+  # ----------------------------------------------------------------------------
+  # JOB: DEPLOY TO SERVER
+  # Deploys the application to the VPS using SSH and Docker Compose.
+  # NOTE: Runs only on main/master branch pushes.
+  # ----------------------------------------------------------------------------
   deploy-server:
     name: Deploy to Server
     needs: build
@@ -98,7 +125,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
-      - name: Checkout code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Deploy via SSH
@@ -112,48 +139,57 @@ jobs:
           script: |
             cd ${{ secrets.DEPLOY_PATH || '/opt/vision-aid' }}
 
-            # Pull latest images
+            echo "🚀 Starting Deployment..."
+
+            # Pull latest images from registry
             docker-compose pull
 
-            # Restart services
-            docker-compose up -d
+            # Restart services with zero downtime (if configured)
+            docker-compose up -d --remove-orphans
 
-            # Clean up old images
+            # Clean up old/unused images to save disk space
             docker image prune -af
 
-            # Check service health
+            # Health Check
+            echo "🏥 Checking Service Health..."
             sleep 10
             docker-compose ps
 
-            echo "✅ Deployment complete!"
+            echo "✅ Deployment Successful!"
 
-      - name: Notify deployment
+      - name: Notify Deployment Status
         if: always()
         run: |
           echo "🚀 Deployment triggered for ${{ github.ref }}"
           echo "📦 Images: backend, frontend"
           echo "🌍 Environment: production"
 
-  # Deploy to Vercel (Frontend only)
+  # ----------------------------------------------------------------------------
+  # JOB: DEPLOY TO VERCEL (FRONTEND ONLY)
+  # Alternative deployment strategy for the frontend using Vercel.
+  # ----------------------------------------------------------------------------
   deploy-vercel:
     name: Deploy Frontend to Vercel
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
-      - name: Checkout code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Deploy to Vercel
         if: ${{ secrets.VERCEL_TOKEN != '' }}
         run: |
           cd "front -end/vision-aid-ui"
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
+          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-  # Health Check Post-Deployment
+  # ----------------------------------------------------------------------------
+  # JOB: POST-DEPLOYMENT HEALTH CHECK
+  # Verifies that specific endpoints are reachable after deployment.
+  # ----------------------------------------------------------------------------
   health-check:
     name: Post-Deployment Health Check
     needs: [deploy-server]
@@ -161,20 +197,20 @@ jobs:
     if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
     steps:
-      - name: Wait for deployment
+      - name: Wait for Propagation
         run: sleep 30
 
-      - name: Check backend health
+      - name: Check Backend Health
         if: ${{ secrets.BACKEND_URL != '' }}
         run: |
           curl -f ${{ secrets.BACKEND_URL }}/health || echo "⚠️ Backend health check failed"
 
-      - name: Check frontend
+      - name: Check Frontend Availability
         if: ${{ secrets.FRONTEND_URL != '' }}
         run: |
           curl -f ${{ secrets.FRONTEND_URL }} || echo "⚠️ Frontend health check failed"
 
-      - name: Deployment summary
+      - name: Deployment Summary
         run: |
-          echo "✅ Deployment pipeline complete"
-          echo "🔍 Review logs above for any issues"
+          echo "✅ Deployment Pipeline Complete"
+          echo "🔍 Please review the job logs above for any warnings or errors."

@@ -7,11 +7,12 @@ const Footer = () => {
     const currentYear = new Date().getFullYear();
 
     const footerLinks = {
-        Product: [
-            { label: 'Features', to: '/' },
-            { label: 'Live Detector', to: '/live-detector' },
+        Features: [
+            // { label: 'Features', to: '/' },
+            { label: 'Color Detector', to: '/color-picker' },
             { label: 'Palette Checker', to: '/palette-checker' },
             { label: 'Color Blindness', to: '/simulator' },
+            { label: 'Traffic Signal', to: '/traffic-signal' }
         ],
         Resources: [
             { label: 'Documentation', to: '/docs' },
@@ -137,15 +138,9 @@ const Footer = () => {
                     transition={{ duration: 0.6, delay: 0.3 }}
                 >
                     <div className="flex items-center gap-2">
-                        <span>© {currentYear} VisionAid. Made with</span>
-                        <FaHeart className="w-4 h-4 text-red-500 animate-pulse" />
-                        <span>for accessibility.</span>
+                        <span>© {currentYear} VisionAid.</span>
                     </div>
-                    <div className="flex gap-8">
-                        <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer font-medium">Status</button>
-                        <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer font-medium">Contact</button>
-                        <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer font-medium">Support</button>
-                    </div>
+
                 </motion.div>
 
             </div>

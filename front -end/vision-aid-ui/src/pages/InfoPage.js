@@ -31,11 +31,7 @@ const InfoPage = ({ title, category, type = 'generic' }) => {
             },
             {
                 heading: "Key Information",
-                content: "We are constantly updating our resources to provide the best possible experience. Whether you are a developer, a user, or a partner, you'll find relevant details here tailored to your needs."
-            },
-            {
-                heading: "Get Involved",
-                content: "Your feedback is invaluable to us. If you have questions or suggestions, please reach out to our team or join our community discussions."
+                content: "We are constantly updating our resources to providing the best possible experience. Whether you are a developer, a user, or a partner, you'll find relevant details here tailored to your needs."
             }
         ],
         privacy: [
@@ -46,10 +42,6 @@ const InfoPage = ({ title, category, type = 'generic' }) => {
             {
                 heading: "Local Processing",
                 content: "All AI analysis happens directly in your browser. This ensures zero latency and maximum privacy. No personal data leaves your device during the detection process."
-            },
-            {
-                heading: "Data Collection",
-                content: "We only collect minimal, anonymous usage data (like page views) to improve the app. We do not collect personally identifiable information unless you explicitly provide it (e.g., creating an account)."
             }
         ],
         legal: [
@@ -59,19 +51,108 @@ const InfoPage = ({ title, category, type = 'generic' }) => {
             },
             {
                 heading: "Data Protection",
-                content: "We implement robust security measures to protect your personal information. Our systems are designed with privacy-by-design principles to ensure compliance with global data protection regulations."
+                content: "We implement robust security measures to protect your personal information. Our systems are designed with privacy-by-design principles."
+            }
+        ],
+        // NEW SECTIONS
+        careers: [
+            {
+                heading: "Join Our Mission",
+                content: "At VisionAid, we are passionate about creating a more accessible world. We're looking for talented developers, designers, and accessibility experts to join our growing team to solve real-world problems."
+            },
+            {
+                heading: "Open Positions",
+                content: "We are currently hiring for Frontend Developers (React), AI Engineers (Python/YOLO), and UI/UX Designers. If you are passionate about accessibility tech, we want to hear from you."
+            },
+            {
+                heading: "Culture & Benefits",
+                content: "We value innovation, empathy, and collaboration. Our team enjoys flexible working hours, remote-first options, and a dedicated budget for learning and development."
+            }
+        ],
+        contact: [
+            {
+                heading: "Get in Touch",
+                content: "Have a question or feedback? We'd love to hear from you. Whether you're a user needing support or a developer wanting to contribute, we're here to help."
+            },
+            {
+                heading: "Support Channels",
+                content: "Email us at visionaid07@gmail.com for technical assistance. For partnership inquiries, please contact visionaid07@gmail.com. We typically respond within 24 hours."
+            },
+            {
+                heading: "Community",
+                content: "Join our public Discord server to chat with other users, share your experiences, and get real-time updates from the development team."
+            }
+        ],
+        cookies: [
+            {
+                heading: "What Are Cookies?",
+                content: "Cookies are small text files stored on your device when you visit our website. We use them strictly for essential functionality, such as remembering your login state, theme preferences (Dark/Light mode), and simulation settings."
+            },
+            {
+                heading: "Zero-Tracking Policy",
+                content: "We respect your privacy. VisionAid does NOT use third-party tracking cookies or advertising pixels. We do not sell your browsing history to data brokers."
+            },
+            {
+                heading: "Managing Preferences",
+                content: "You have full control. You can block or delete cookies at any time through your browser settings, though this may reset your saved preferences like color blindness modes."
+            }
+        ],
+        terms: [
+            {
+                heading: "User Agreement",
+                content: "By accessing VisionAid, you agree to use our tools responsibly. Our services are provided 'as-is' to assist users with color vision deficiencies. You agree not to misuse the platform or attempt to reverse-engineer our proprietary AI models."
+            },
+            {
+                heading: "Medical Disclaimer",
+                content: "VisionAid is an assistive technology tool, NOT a medical device. It should not be used as a substitute for professional medical advice, diagnosis, or treatment. Do not rely solely on this app for critical safety decisions."
+            },
+            {
+                heading: "Termination",
+                content: "We reserve the right to suspend accounts that violate our community guidelines or attempt to exploit our infrastructure."
+            }
+        ],
+        license: [
+            {
+                heading: "Open Source (MIT)",
+                content: "VisionAid is proud to be open-source software licensed under the MIT License. We believe in transparency and community collaboration to build better accessibility tools."
+            },
+            {
+                heading: "Your Rights",
+                content: "You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, provided that you include the original copyright notice."
+            },
+            {
+                heading: "No Warranty",
+                content: "THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND. The authors or copyright holders shall not be liable for any claim or damages arising from the use of this software."
+            }
+        ],
+        press: [
+            {
+                heading: "About VisionAid",
+                content: "VisionAid is a cutting-edge accessibility tool designed to help individuals with color vision deficiencies navigate the world with confidence using AI-powered color detection."
+            },
+            {
+                heading: "Media Assets",
+                content: "Access high-resolution logos, product screenshots, and b-roll footage for your articles and videos. All assets are available for download in our Media Pack (Link coming soon)."
+            },
+            {
+                heading: "Press Inquiries",
+                content: "For interviews, press releases, or official statements, please contact our media relations team at visionaid07@gmail.com."
             }
         ]
     };
 
     let content;
-    if (title.toLowerCase().includes('privacy')) {
-        content = sections.privacy;
-    } else if (type === 'legal') {
-        content = sections.legal;
-    } else {
-        content = sections.generic;
-    }
+    const t = title.toLowerCase();
+
+    if (t.includes('privacy')) content = sections.privacy;
+    else if (t.includes('career')) content = sections.careers;
+    else if (t.includes('contact')) content = sections.contact;
+    else if (t.includes('press')) content = sections.press;
+    else if (t.includes('terms') || t.includes('service')) content = sections.terms;
+    else if (t.includes('cookie')) content = sections.cookies;
+    else if (t.includes('license')) content = sections.license;
+    else if (type === 'legal') content = sections.legal;
+    else content = sections.generic;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0a0f1c] pt-24 pb-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300">

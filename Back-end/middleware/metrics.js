@@ -1,12 +1,18 @@
+'use strict';
+
 /**
- * Prometheus Metrics Configuration
- * Exposes application metrics for monitoring systems
+ * @fileoverview Prometheus Metrics Configuration
+ * Configures and exposes application metrics for monitoring systems (e.g., Prometheus, Grafana).
+ * Tracks HTTP request duration, error rates, database query performance, and custom business events.
+ * @module middleware/metrics
+ * @requires prom-client
+ * @requires config/logger
  */
 
 const client = require('prom-client');
 const { logger } = require('../config/logger');
 
-// Create a Registry
+// Create a Registry to hold all metrics
 const register = new client.Registry();
 
 // Add default metrics (CPU, memory, event loop, etc.)

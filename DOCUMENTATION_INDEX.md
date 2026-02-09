@@ -296,7 +296,7 @@ A: See [WEBSITE_TRANSFORMATION_SUMMARY.md](WEBSITE_TRANSFORMATION_SUMMARY.md) - 
 
 - **GitHub**: Check issues and discussions
 - **Documentation**: See files in this directory
-- **Email**: contact@visionaid.app (if configured)
+- **Email**: visionaid07@gmail.com
 - **Community**: Check community forum (if available)
 
 ---

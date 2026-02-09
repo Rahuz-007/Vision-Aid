@@ -370,7 +370,7 @@ docker-compose -f docker-compose.yml up -d
 - **Issues**: Report bugs on GitHub Issues
 - **Discussions**: Join community forum
 - **Contributing**: See CONTRIBUTING.md
-- **Email**: contact@visionaid.app
+- **Email**: visionaid07@gmail.com
 
 ---
 
