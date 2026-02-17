@@ -12,7 +12,9 @@ import About from './pages/About';
 import { isConfigValid } from './config/firebase';
 import { FaTimes } from 'react-icons/fa';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import VisionOnboardingModal from './components/auth/VisionOnboardingModal'; // ADDED
+import VisionOnboardingModal from './components/auth/VisionOnboardingModal';
+import VisionFilters from './components/common/VisionFilters';
+import ScrollToTop from './components/common/ScrollToTop';
 
 // Lazy load feature pages
 const Simulator = React.lazy(() => import('./components/features/ColorBlindnessSimulator/ColorBlindnessSimulator'));
@@ -23,8 +25,6 @@ const PaletteChecker = React.lazy(() => import('./components/features/PaletteChe
 const TrafficSignalDetector = React.lazy(() => import('./components/features/TrafficSignalDetector/TrafficSignalDetector'));
 const ColorHistory = React.lazy(() => import('./components/pages/ColorHistory/ColorHistory'));
 const InfoPage = React.lazy(() => import('./pages/InfoPage'));
-
-import ScrollToTop from './components/common/ScrollToTop';
 
 function App() {
     const [showConfigWarning, setShowConfigWarning] = useState(!isConfigValid);
@@ -37,8 +37,9 @@ function App() {
                     <SettingsProvider>
                         <ColorHistoryProvider>
                             <ThemeProvider>
-                                <div className="min-h-screen flex flex-col transition-colors duration-300 dark:bg-[#0a0a0a] bg-gray-50 text-gray-900 dark:text-white">
-                                    <VisionOnboardingModal /> {/* ADDED ONBOARDING */}
+                                <div className="min-h-screen flex flex-col transition-colors duration-300 dark:bg-gray-950 bg-gray-50 text-gray-900 dark:text-white">
+                                    <VisionFilters />
+                                    <VisionOnboardingModal />
                                     {showConfigWarning && (
                                         <div className="bg-yellow-600/20 border-b border-yellow-600/50 text-yellow-800 dark:text-yellow-200 p-4 sticky top-0 z-50 flex justify-between items-center backdrop-blur-xl">
                                             <div>

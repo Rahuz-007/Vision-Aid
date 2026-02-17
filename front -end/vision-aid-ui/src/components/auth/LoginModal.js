@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGoogle, FaTimes, FaEnvelope, FaUser, FaLock } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
@@ -42,10 +43,12 @@ const LoginModal = ({ isOpen, onClose }) => {
         }
     };
 
-    return (
+    if (!isOpen) return null;
+
+    return ReactDOM.createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -70,7 +73,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                         {/* Close Button */}
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 p-2 text-white/50 hover:text-white transition-colors z-10 rounded-full hover:bg-white/10"
+                            className="absolute top-4 right-4 p-2 text-white/50 hover:text-white transition-colors z-50 rounded-full hover:bg-white/10 cursor-pointer"
                         >
                             <FaTimes size={18} />
                         </button>
@@ -150,7 +153,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="w-full flex justify-center py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] transform transition-all active:scale-[0.98] border border-white/10"
+                                    className="w-full flex justify-center py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] transform transition-all active:scale-[0.98] border border-white/10 cursor-pointer"
                                 >
                                     {isLoading ? (
                                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -169,7 +172,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                             <button
                                 disabled={isLoading}
                                 onClick={handleGoogleLogin}
-                                className="w-full flex items-center justify-center gap-3 p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium text-white transition-all transform active:scale-[0.98] group"
+                                className="w-full flex items-center justify-center gap-3 p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium text-white transition-all transform active:scale-[0.98] group cursor-pointer"
                             >
                                 <FaGoogle className="text-white/80 group-hover:text-white transition-colors" size={20} />
                                 <span>Continue with Google</span>
@@ -179,7 +182,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                                 {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
                                 <button
                                     onClick={() => setIsSignUp(!isSignUp)}
-                                    className="text-blue-400 hover:text-blue-300 font-bold transition-colors ml-1 hover:underline decoration-blue-400/30"
+                                    className="text-blue-400 hover:text-blue-300 font-bold transition-colors ml-1 hover:underline decoration-blue-400/30 cursor-pointer"
                                 >
                                     {isSignUp ? 'Log In' : 'Sign Up'}
                                 </button>
@@ -188,7 +191,8 @@ const LoginModal = ({ isOpen, onClose }) => {
                     </motion.div>
                 </div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 };
 

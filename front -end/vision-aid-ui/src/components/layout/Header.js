@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useSettings } from '../../context/SettingsContext'; // Add import
+import SearchBar from '../common/SearchBar';
 
 const Header = () => {
     const { currentUser, logout } = useAuth();
@@ -35,13 +36,14 @@ const Header = () => {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [notifications, setNotifications] = useState([
         { id: 1, text: "Welcome to VisionAid! Try our new features.", time: "2m ago", read: false, type: 'info' },
-        { id: 2, text: "Traffic Signal Detector updated.", time: "1h ago", read: false, type: 'success' },
-        { id: 3, text: "Your profile is 80% complete.", time: "1d ago", read: true, type: 'warning' }
+        { id: 2, text: "Traffic Signal Detector updated.", time: "1h ago", read: false, type: 'success', link: '/traffic-signal' },
+        { id: 3, text: "Your profile is 80% complete.", time: "1d ago", read: true, type: 'warning', action: 'profile' }
     ]);
 
     // Refs for click outside
     const notifRef = useRef(null);
     const settingsRef = useRef(null);
+    const mobileMenuRef = useRef(null);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -52,10 +54,13 @@ const Header = () => {
             if (settingsRef.current && !settingsRef.current.contains(event.target)) {
                 setSettingsOpen(false);
             }
+            if (isMobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(event.target) && !event.target.closest('button[aria-label="Toggle mobile menu"]')) {
+                setIsMobileMenuOpen(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [isMobileMenuOpen]);
 
     const markAsRead = (id) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -95,8 +100,49 @@ const Header = () => {
     const isActive = (path) => location.pathname === path;
     const unreadCount = notifications.filter(n => !n.read).length;
 
+    // Search functionality
+    const searchSuggestions = [
+        'Color Picker', 'Color Detector', 'Live Color Detection',
+        'Traffic Signal', 'Traffic Light Detection',
+        'Color Blindness Simulator', 'Protanopia', 'Deuteranopia', 'Tritanopia',
+        'Palette Checker', 'Contrast Checker', 'WCAG Compliance',
+        'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange',
+        'Saved Colors', 'Color History', 'Settings', 'Profile'
+    ];
+
+    const handleSearch = (query) => {
+        const lowerQuery = query.toLowerCase();
+
+        // Navigate based on search query
+        if (lowerQuery.includes('color') && (lowerQuery.includes('pick') || lowerQuery.includes('detect'))) {
+            navigate('/color-picker');
+        } else if (lowerQuery.includes('traffic') || lowerQuery.includes('signal')) {
+            navigate('/traffic-signal');
+        } else if (lowerQuery.includes('simulat') || lowerQuery.includes('blind')) {
+            navigate('/simulator');
+        } else if (lowerQuery.includes('palette') || lowerQuery.includes('contrast')) {
+            navigate('/palette-checker');
+        } else if (lowerQuery.includes('saved') || lowerQuery.includes('history')) {
+            navigate('/color-history');
+        } else if (lowerQuery.includes('setting')) {
+            setIsSettingsModalOpen(true);
+        } else if (lowerQuery.includes('profile')) {
+            setIsProfileModalOpen(true);
+        } else {
+            // Try to match color names
+            const colorMatch = navLinks.find(link =>
+                link.label.toLowerCase().includes(lowerQuery)
+            );
+            if (colorMatch) {
+                navigate(colorMatch.to);
+            } else {
+                toast.error(`No results found for "${query}"`);
+            }
+        }
+    };
+
     return (
-        <header className="sticky top-0 z-50 w-full bg-white/50 dark:bg-[#0a0f1c]/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 transition-colors duration-300">
+        <header className="sticky top-0 z-[999] w-full bg-white/50 dark:bg-[#0a0f1c]/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center h-20">
 
@@ -116,11 +162,11 @@ const Header = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400 group-hover:bg-gradient-to-l transition-all duration-500">
-                                        VisionAid
+                                        VisionAid.
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-gray-500 dark:text-gray-400 group-hover:text-blue-500 transition-colors">
+                                    {/* <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-gray-500 dark:text-gray-400 group-hover:text-blue-500 transition-colors">
                                         Color Accessibility
-                                    </span>
+                                    </span> */}
                                 </div>
                             </div>
                         </Link>
@@ -154,6 +200,12 @@ const Header = () => {
                     {/* Right Action Section */}
                     <div className="flex-1 flex items-center justify-end gap-3">
 
+                        {/* Search Bar - Compact Icon */}
+                        <SearchBar
+                            placeholder="Search colors, features..."
+                            onSearch={handleSearch}
+                            suggestions={searchSuggestions}
+                        />
 
                         {/* Notifications */}
                         <div className="relative" ref={notifRef}>
@@ -197,7 +249,16 @@ const Header = () => {
                                                 notifications.map(notif => (
                                                     <div
                                                         key={notif.id}
-                                                        onClick={() => markAsRead(notif.id)}
+                                                        onClick={() => {
+                                                            markAsRead(notif.id);
+                                                            if (notif.action === 'profile') {
+                                                                setIsProfileModalOpen(true);
+                                                                setNotificationOpen(false);
+                                                            } else if (notif.link) {
+                                                                navigate(notif.link);
+                                                                setNotificationOpen(false);
+                                                            }
+                                                        }}
                                                         className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-all relative group ${!notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent opacity-75'
                                                             }`}
                                                     >
@@ -372,10 +433,11 @@ const Header = () => {
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div
+                        ref={mobileMenuRef}
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="lg:hidden bg-white dark:bg-[#0a0f1c] border-t border-gray-200 dark:border-gray-800 overflow-hidden"
+                        className="lg:hidden absolute top-full left-0 w-full bg-white dark:bg-[#0a0f1c] border-t border-gray-200 dark:border-gray-800 overflow-hidden shadow-2xl z-50 rounded-b-2xl"
                     >
                         <div className="px-4 py-4 space-y-1">
                             {navLinks.map((link) => (

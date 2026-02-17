@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaCloudUploadAlt, FaCopy, FaCheck, FaPalette, FaImage, FaCamera } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext';
+import { hoverLift, tapScale } from '../../../utils/microInteractions';
 
 const PaletteChecker = () => {
     const { currentUser } = useAuth();
@@ -266,24 +267,28 @@ const PaletteChecker = () => {
                     <div className="lg:col-span-5 space-y-6">
                         {/* Tabs */}
                         <div id="pc-tabs" className="bg-white dark:bg-gray-900/50 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-2xl p-1.5 flex shadow-lg transition-colors">
-                            <button
+                            <motion.button
                                 onClick={() => { setActiveTab('image'); stopCamera(); }}
+                                whileHover={hoverLift}
+                                whileTap={tapScale}
                                 className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 ${activeTab === 'image'
                                     ? 'bg-blue-600 text-white shadow-md'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                                     }`}
                             >
                                 <FaImage /> Upload Image
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                                 onClick={() => { setActiveTab('camera'); startCamera(); }}
+                                whileHover={hoverLift}
+                                whileTap={tapScale}
                                 className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 ${activeTab === 'camera'
                                     ? 'bg-blue-600 text-white shadow-md'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
                                     }`}
                             >
                                 <FaCamera /> Use Camera
-                            </button>
+                            </motion.button>
                         </div>
 
                         {/* Content Area */}

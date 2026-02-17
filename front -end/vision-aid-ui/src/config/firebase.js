@@ -7,6 +7,7 @@ import {
     setPersistence
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -24,6 +25,7 @@ const isConfigValid = !!(firebaseConfig.apiKey && firebaseConfig.authDomain);
 let app;
 let auth;
 let db;
+let storage;
 let googleProvider;
 let githubProvider;
 
@@ -33,6 +35,7 @@ if (isConfigValid) {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
+        storage = getStorage(app);
 
         // Set persistence to local (keeps user logged in after refresh)
         setPersistence(auth, browserLocalPersistence).catch((error) => {
@@ -63,4 +66,4 @@ function getMockAuth() {
     };
 }
 
-export { auth, db, googleProvider, githubProvider, isConfigValid };
+export { auth, db, storage, googleProvider, githubProvider, isConfigValid };

@@ -50,6 +50,18 @@ export const SettingsProvider = ({ children }) => {
             document.documentElement.style.fontSize = ''; // Default
         }
 
+        // Apply Vision Simulation
+        document.body.classList.remove(
+            'vision-protanopia',
+            'vision-deuteranopia',
+            'vision-tritanopia',
+            'vision-achromatopsia'
+        );
+
+        if (settings.visionType && settings.visionType !== 'normal') {
+            document.body.classList.add(`vision-${settings.visionType}`);
+        }
+
         if (!settings.voiceEnabled && window.speechSynthesis) {
             window.speechSynthesis.cancel();
         }

@@ -28,10 +28,36 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(to br, #0f172a, #1e293b, #0f172a);
+  background: linear-gradient(to br, #0f172a, #1E293B, #0f172a);
   color: #e2e8f0;
   overflow-x: hidden;
 }
+
+/* Vision Simulation Filters */
+/* Protanopia */
+body.vision-protanopia,
+.vision-protanopia {
+  filter: url(#protanopia) !important;
+}
+
+/* Deuteranopia */
+body.vision-deuteranopia,
+.vision-deuteranopia {
+  filter: url(#deuteranopia) !important;
+}
+
+/* Tritanopia */
+body.vision-tritanopia,
+.vision-tritanopia {
+  filter: url(#tritanopia) !important;
+}
+
+/* Achromatopsia */
+body.vision-achromatopsia,
+.vision-achromatopsia {
+  filter: url(#achromatopsia) !important;
+}
+
 
 /* High Contrast Mode */
 .high-contrast body {
@@ -192,6 +218,42 @@ code {
   }
 }
 
+/* NEW: Horizontal Gradient Animation for long text */
+@keyframes gradient-x {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+  background-size: 200% auto;
+}
+
+/* Ticker Marquee Animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  min-width: 100%;
+}
+
 /* Smooth transitions */
 button,
 a,
@@ -205,8 +267,15 @@ main {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Loading skeleton */

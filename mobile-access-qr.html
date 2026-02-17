@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Aid - Mobile Access</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .qr-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .qr-code {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            margin: 0 auto;
+        }
+        
+        .url-box {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            color: #333;
+            word-break: break-all;
+        }
+        
+        .url-text {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .instructions {
+            text-align: left;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+        
+        .instructions li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        
+        .warning {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            color: #721c24;
+        }
+        
+        .warning strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 20px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Vision Aid</h1>
+        <p class="subtitle">Mobile Access with HTTPS</p>
+        
+        <div class="status">✓ Server Running</div>
+        
+        <div class="qr-container">
+            <img id="qrCode" class="qr-code" alt="QR Code">
+            <p style="margin-top: 15px; color: #666;">Scan with your phone camera</p>
+        </div>
+        
+        <div class="url-box">
+            <div class="url-text" id="mobileUrl">Loading...</div>
+        </div>
+        
+        <button class="copy-btn" onclick="copyUrl()">📋 Copy URL</button>
+        
+        <div class="instructions">
+            <h3>📋 How to Access on Mobile:</h3>
+            <ol>
+                <li><strong>Scan the QR code</strong> above with your phone camera, OR</li>
+                <li><strong>Copy the URL</strong> and paste it in your mobile browser</li>
+                <li><strong>Connect to the same Wi-Fi</strong> network as this computer</li>
+                <li>When you see a security warning, tap <strong>"Advanced"</strong></li>
+                <li>Then tap <strong>"Proceed to [IP address]"</strong></li>
+                <li>✅ Camera features will now work!</li>
+            </ol>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Security Warning is Normal</strong>
+            The security warning appears because we're using a self-signed certificate for local development. This is completely safe for local testing.
+        </div>
+    </div>
+    
+    <script>
+        // Get local IP and generate QR code
+        async function init() {
+            try {
+                // Fetch local IP from a simple endpoint
+                const response = await fetch('/api/local-ip').catch(() => null);
+                let ip = '172.20.10.10'; // Default IP
+                
+                if (response && response.ok) {
+                    const data = await response.json();
+                    ip = data.ip;
+                }
+                
+                const url = `https://${ip}:3000`;
+                document.getElementById('mobileUrl').textContent = url;
+                
+                // Generate QR code using Google Charts API
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+                document.getElementById('qrCode').src = qrUrl;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                // Use default IP
+                const url = 'https://172.20.10.10:3000';
+                document.getElementById('mobileUrl').textContent = url;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+                document.getElementById('qrCode').src = qrUrl;
+            }
+        }
+        
+        function copyUrl() {
+            const url = document.getElementById('mobileUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = '#28a745';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#667eea';
+                }, 2000);
+            });
+        }
+        
+        init();
+    </script>
+</body>
+</html>

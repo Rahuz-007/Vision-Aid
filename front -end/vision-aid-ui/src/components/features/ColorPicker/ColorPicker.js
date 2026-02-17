@@ -8,6 +8,8 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useColorHistory } from '../../../context/ColorHistoryContext';
+import EmptyState from '../../common/EmptyState';
+import { hoverLift, tapScale } from '../../../utils/microInteractions';
 
 // ColorPicker Component - Smart Camera
 /**
@@ -165,6 +167,8 @@ const ColorDetector = () => {
     const { addToHistory } = useColorHistory();
 
     const [mode, setMode] = useState('camera');
+    const modeRef = useRef(mode); // Sync ref for interval
+    useEffect(() => { modeRef.current = mode; }, [mode]);
     const [isDetecting, setIsDetecting] = useState(false);
 
     const [matchItem1, setMatchItem1] = useState(null);
@@ -430,13 +434,32 @@ const ColorDetector = () => {
     };
 
     const stopCamera = () => {
-        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+        }
         setIsDetecting(false);
     };
 
     const handleManualChange = (e) => {
         const val = e.target.value; setSelectedColor(val); analyzeColor(val);
     }
+
+    const handleRandomColor = () => {
+        const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        setSelectedColor(randomColor);
+        analyzeColor(randomColor);
+    };
+
+    const handleHexInputChange = (e) => {
+        let val = e.target.value;
+        if (!val.startsWith('#')) val = '#' + val;
+        if (val.length > 7) return; // Limit length
+        setSelectedColor(val);
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+            analyzeColor(val);
+        }
+    };
 
     // Smart Camera: Stop if tab is hidden or component unmounts
     useEffect(() => {
@@ -458,12 +481,15 @@ const ColorDetector = () => {
         };
     }, []);
 
-    useEffect(() => { if (mode === 'manual' && !colorInfo) analyzeColor(selectedColor); }, [mode]);
+    useEffect(() => {
+        if (mode === 'manual') analyzeColor(selectedColor);
+    }, [mode, selectedColor]);
 
     // Processing Loop
     useEffect(() => {
-        if (!isDetecting) return;
+        if (!isDetecting || mode === 'manual') return;
         const interval = setInterval(() => {
+            if (modeRef.current === 'manual') return; // Sync check
             if (!videoRef.current || !canvasRef.current || !overlayRef.current) return;
             const ctx = canvasRef.current.getContext('2d');
             const overlayCtx = overlayRef.current.getContext('2d');
@@ -595,25 +621,25 @@ const ColorDetector = () => {
     }, [isDetecting, analyzeColor, mode, patternEnabled, targetFindColor, arEnabled]);
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pt-20 pb-20 font-sans">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white p-4 pt-20 pb-20 font-sans transition-colors duration-300">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-6">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-900 to-purple-900 border border-blue-500/30 rounded-full text-xs font-bold text-gray-200 mb-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-gradient-to-r dark:from-blue-900 dark:to-purple-900 border border-gray-200 dark:border-blue-500/30 rounded-full text-xs font-bold text-gray-600 dark:text-gray-200 mb-2 shadow-sm">
                         {mode === 'match' ? <><FaTshirt /> Outfit Advisor</> : <><FaPalette /> Visual Assistant</>}
                     </div>
-                    <h1 className="text-4xl font-black">
-                        {mode === 'match' ? 'Outfit' : 'Color'} <span className="text-blue-500">{mode === 'match' ? 'Matcher' : 'Detector'}</span>
+                    <h1 className="text-4xl font-black text-gray-900 dark:text-white">
+                        {mode === 'match' ? 'Outfit' : 'Color'} <span className="text-blue-600 dark:text-blue-500">{mode === 'match' ? 'Matcher' : 'Detector'}</span>
                     </h1>
                 </div>
 
                 <div className="flex justify-center gap-4 mb-6 flex-wrap">
-                    <button onClick={() => { setMode('camera'); if (streamRef.current) stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm ${mode === 'camera' ? 'bg-blue-600' : 'bg-gray-800'}`}>Camera</button>
-                    <button onClick={() => { setMode('manual'); if (streamRef.current) stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm ${mode === 'manual' ? 'bg-blue-600' : 'bg-gray-800'}`}>Manual</button>
-                    <button onClick={() => { setMode('find'); if (streamRef.current) stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm flex gap-2 ${mode === 'find' ? 'bg-green-600' : 'bg-gray-800'}`}><FaSearch /> Find</button>
-                    <button onClick={() => { setMode('match'); if (streamRef.current) stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm flex gap-2 ${mode === 'match' ? 'bg-purple-600' : 'bg-gray-800'}`}><FaTshirt /> Match</button>
+                    <button onClick={() => { setMode('camera'); setColorInfo(null); stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm transition-all border ${mode === 'camera' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Camera</button>
+                    <button onClick={() => { setMode('manual'); stopCamera(); analyzeColor(selectedColor); }} className={`px-3 py-2 rounded-lg font-bold text-sm transition-all border ${mode === 'manual' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Manual</button>
+                    <button onClick={() => { setMode('find'); setColorInfo(null); stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm flex gap-2 transition-all border ${mode === 'find' ? 'bg-green-600 text-white border-green-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><FaSearch /> Find</button>
+                    <button onClick={() => { setMode('match'); setColorInfo(null); setMatchVerdict(null); setOccasionAdvice(null); stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm flex gap-2 transition-all border ${mode === 'match' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><FaTshirt /> Match</button>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 bg-gray-900 p-2 rounded-3xl border border-gray-800">
+                <div className="grid md:grid-cols-2 gap-6 bg-white dark:bg-gray-900 p-2 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-none">
 
                     {/* LEFT SIDE: INPUT */}
                     <div className="relative aspect-[4/3] bg-black rounded-2xl overflow-hidden flex flex-col group">
@@ -626,14 +652,14 @@ const ColorDetector = () => {
                             <div className="absolute top-4 right-4 flex gap-2">
                                 <button
                                     onClick={() => { setArEnabled(!arEnabled); if (patternEnabled) setPatternEnabled(false); }}
-                                    className={`p-2 rounded-full border-2 ${arEnabled ? 'bg-blue-500 border-white text-white' : 'bg-black/50 border-gray-500 text-gray-400'}`}
+                                    className={`p-2 rounded-full border-2 ${arEnabled ? 'bg-blue-500 border-white text-white' : 'bg-black/50 border-white/50 text-white/80'}`}
                                     title="Enable AR Color Tags"
                                 >
                                     <FaGlasses />
                                 </button>
                                 <button
                                     onClick={() => { setPatternEnabled(!patternEnabled); if (arEnabled) setArEnabled(false); }}
-                                    className={`p-2 rounded-full border-2 ${patternEnabled ? 'bg-yellow-500 border-white text-black' : 'bg-black/50 border-gray-500 text-gray-400'}`}
+                                    className={`p-2 rounded-full border-2 ${patternEnabled ? 'bg-yellow-500 border-white text-black' : 'bg-black/50 border-white/50 text-white/80'}`}
                                     title="Enable Pattern Overlay"
                                 >
                                     <FaBraille />
@@ -641,27 +667,94 @@ const ColorDetector = () => {
                             </div>
                         )}
 
-                        {/* MANUAL OVERLAY */}
+                        {/* MANUAL OVERLAY - PREMIUM */}
                         {mode === 'manual' && (
-                            <div className="absolute inset-0 bg-gray-800 z-10 flex flex-col p-6">
-                                <label className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Selected Color</label>
-                                <div className="flex-1 rounded-2xl shadow-inner mb-6 transition-all duration-300 relative group"
-                                    style={{ backgroundColor: selectedColor }}></div>
-                                <input type="color" value={selectedColor} onChange={handleManualChange} className="w-full h-12 mb-4" />
+                            <div className="absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl z-10 flex flex-col p-6 overflow-y-auto">
+                                <div className="flex justify-between items-center mb-6">
+                                    <label className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                                        <FaPalette className="text-blue-500" /> Manual Analysis
+                                    </label>
+                                    <button
+                                        onClick={handleRandomColor}
+                                        className="text-xs font-bold px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors flex items-center gap-1.5 text-gray-600 dark:text-gray-300"
+                                    >
+                                        <FaRandom size={10} /> Random
+                                    </button>
+                                </div>
+
+                                {/* Main Color Preview & Picker */}
+                                {/* Main Color Preview & Picker */}
+                                <div className="relative group w-full aspect-video rounded-2xl shadow-2xl mb-6 overflow-hidden border border-gray-200 dark:border-gray-700 transition-transform active:scale-[0.99]">
+                                    <input
+                                        type="color"
+                                        value={selectedColor.length === 7 ? selectedColor : '#000000'}
+                                        onChange={handleManualChange}
+                                        className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] cursor-pointer opacity-0 z-20"
+                                    />
+                                    <div
+                                        className="absolute inset-0 z-10 pointer-events-none transition-colors duration-300"
+                                        style={{ backgroundColor: selectedColor }}
+                                    />
+                                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent z-10 flex justify-between items-end">
+                                        <div>
+                                            <p className="text-white/50 text-xs font-bold uppercase mb-1">Click to Pick</p>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={selectedColor}
+                                                    onChange={handleHexInputChange}
+                                                    className="bg-black/40 border border-white/20 rounded px-2 py-1 text-white font-mono text-sm w-24 focus:ring-2 focus:ring-blue-500 outline-none backdrop-blur-md"
+                                                    spellCheck={false}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Contrast Quick View */}
                                 {colorInfo && (
-                                    <div className="bg-black/20 p-4 rounded-xl">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-sm font-bold">Contrast</span>
-                                            <span className="text-xs text-gray-400">{colorInfo.contrast}</span>
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 mb-6">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm bg-white text-black border border-gray-200 dark:border-gray-700">
+                                                    Aa
+                                                </div>
+                                                <div className="h-8 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm bg-black text-white border border-gray-600">
+                                                    Aa
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-0.5">Visibility</span>
+                                                <span className={`text-sm font-bold ${colorInfo.contrast.includes('Good') || colorInfo.contrast.includes('safer') ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                                                    {colorInfo.contrast}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Quick Presets */}
+                                <div>
+                                    <p className="text-gray-500 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3">Quick Presets</p>
+                                    <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+                                        {['#EF4444', '#F97316', '#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#8B5CS6', '#EC4899', '#14B8A6'].map(color => (
+                                            <button
+                                                key={color}
+                                                onClick={() => { setSelectedColor(color); analyzeColor(color); }}
+                                                className="w-10 h-10 rounded-xl shrink-0 border-2 border-transparent hover:border-gray-900 dark:hover:border-white transition-all shadow-lg hover:scale-110"
+                                                style={{ backgroundColor: color }}
+                                                aria-label={`Select ${color}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         )}
 
                         {mode !== 'manual' && !isDetecting && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
-                                <button onClick={startCamera} className="bg-blue-600 px-8 py-3 rounded-xl font-bold text-lg shadow-lg">Start {mode === 'find' ? 'Search' : 'Camera'}</button>
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-950/80 z-20">
+                                <button onClick={startCamera} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition-colors">Start {mode === 'find' ? 'Search' : 'Camera'}</button>
                             </div>
                         )}
                     </div>
@@ -671,37 +764,37 @@ const ColorDetector = () => {
                         <AnimatePresence mode="wait">
                             {mode === 'match' ? (
                                 <motion.div key="match-ui" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full">
-                                    <h2 className="text-2xl font-bold mb-4">Outfit Advisor</h2>
+                                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Outfit Advisor</h2>
                                     <div className="grid grid-cols-2 gap-4 mb-6">
                                         <div onClick={() => captureMatchItem(1)} className="cursor-pointer group">
-                                            <div className="h-24 rounded-xl border-2 border-dashed border-gray-600 flex items-center justify-center mb-2 overflow-hidden relative" style={{ backgroundColor: matchItem1?.hex || 'transparent' }}>{!matchItem1 && <span className="text-gray-500 text-xs text-center px-2">Tap to Capture Top</span>}</div>
-                                            <div className="text-sm font-bold">Top</div>
+                                            <div className="h-24 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center mb-2 overflow-hidden relative" style={{ backgroundColor: matchItem1?.hex || 'transparent' }}>{!matchItem1 && <span className="text-gray-500 dark:text-gray-500 text-xs text-center px-2">Tap to Capture Top</span>}</div>
+                                            <div className="text-sm font-bold text-gray-700 dark:text-gray-200">Top</div>
                                         </div>
                                         <div onClick={() => captureMatchItem(2)} className="cursor-pointer group">
-                                            <div className="h-24 rounded-xl border-2 border-dashed border-gray-600 flex items-center justify-center mb-2 overflow-hidden relative" style={{ backgroundColor: matchItem2?.hex || 'transparent' }}>{!matchItem2 && <span className="text-gray-500 text-xs text-center px-2">Tap to Capture Bottom</span>}</div>
-                                            <div className="text-sm font-bold">Bottom</div>
+                                            <div className="h-24 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center mb-2 overflow-hidden relative" style={{ backgroundColor: matchItem2?.hex || 'transparent' }}>{!matchItem2 && <span className="text-gray-500 dark:text-gray-500 text-xs text-center px-2">Tap to Capture Bottom</span>}</div>
+                                            <div className="text-sm font-bold text-gray-700 dark:text-gray-200">Bottom</div>
                                         </div>
                                     </div>
                                     {matchVerdict && (
                                         <div className="space-y-4">
                                             {/* Verdict Card */}
-                                            <div className={`p-4 rounded-xl border-2 ${matchVerdict.score > 6 ? 'border-green-500 bg-green-900/20' : 'border-red-500 bg-red-900/20'}`}>
+                                            <div className={`p-4 rounded-xl border-2 ${matchVerdict.score > 6 ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-red-500 bg-red-50 dark:bg-red-900/20'}`}>
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div className="text-3xl">{matchVerdict.score > 6 ? <FaCheck className="text-green-500" /> : <FaExclamationTriangle className="text-red-500" />}</div>
-                                                    <div className="text-2xl font-black opacity-50">{matchVerdict.score}/10</div>
+                                                    <div className="text-2xl font-black opacity-50 text-gray-900 dark:text-white">{matchVerdict.score}/10</div>
                                                 </div>
-                                                <h3 className="text-xl font-bold mb-1">{matchVerdict.title}</h3>
-                                                <p className="text-sm opacity-80">{matchVerdict.reason}</p>
+                                                <h3 className="text-xl font-bold mb-1 text-gray-900 dark:text-white">{matchVerdict.title}</h3>
+                                                <p className="text-sm opacity-80 text-gray-700 dark:text-gray-300">{matchVerdict.reason}</p>
                                             </div>
 
                                             {/* Occasion Advice */}
                                             {occasionAdvice && (
-                                                <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 text-left">
-                                                    <h4 className="text-sm font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><FaGlasses /> Style Vibe: <span className="text-white">{occasionAdvice.vibe}</span></h4>
-                                                    <div className="space-y-2 text-sm">
-                                                        <div className="flex justify-between"><span className="text-gray-400">🏢 Work:</span> <span>{occasionAdvice.business}</span></div>
-                                                        <div className="flex justify-between"><span className="text-gray-400">🏖️ Casual:</span> <span>{occasionAdvice.casual}</span></div>
-                                                        <div className="flex justify-between"><span className="text-gray-400">🎩 Formal:</span> <span>{occasionAdvice.formal}</span></div>
+                                                <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 text-left">
+                                                    <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"><FaGlasses /> Style Vibe: <span className="text-gray-900 dark:text-white">{occasionAdvice.vibe}</span></h4>
+                                                    <div className="space-y-2 text-sm text-gray-800 dark:text-gray-200">
+                                                        <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">🏢 Work:</span> <span>{occasionAdvice.business}</span></div>
+                                                        <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">🏖️ Casual:</span> <span>{occasionAdvice.casual}</span></div>
+                                                        <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">🎩 Formal:</span> <span>{occasionAdvice.formal}</span></div>
                                                     </div>
                                                 </div>
                                             )}
@@ -709,7 +802,7 @@ const ColorDetector = () => {
                                             {/* Virtual Try-On Toggle */}
                                             <button
                                                 onClick={() => setShowTryOn(!showTryOn)}
-                                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold font-mono text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+                                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold font-mono text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all"
                                             >
                                                 {showTryOn ? 'Hide Preview' : '👕 View Virtual Try-On'}
                                             </button>
@@ -740,8 +833,8 @@ const ColorDetector = () => {
                                         </div>
                                     )}
                                     <div className="flex gap-2 mt-4">
-                                        <button onClick={() => { setMatchItem1(null); setMatchItem2(null); setMatchVerdict(null); setOccasionAdvice(null); setShowTryOn(false); }} className="flex-1 py-3 bg-gray-800 rounded-xl text-gray-400 hover:text-white transition-all font-bold">New Match</button>
-                                        {matchVerdict && <button className="flex-1 py-3 bg-gray-800 rounded-xl text-blue-400 hover:text-blue-300 transition-all font-bold flex justify-center items-center gap-2"><FaCopy /> Share Look</button>}
+                                        <button onClick={() => { setMatchItem1(null); setMatchItem2(null); setMatchVerdict(null); setOccasionAdvice(null); setShowTryOn(false); }} className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all font-bold">New Match</button>
+                                        {matchVerdict && <button className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-all font-bold flex justify-center items-center gap-2"><FaCopy /> Share Look</button>}
                                     </div>
                                 </motion.div>
                             ) : mode === 'find' ? (
@@ -769,8 +862,8 @@ const ColorDetector = () => {
                                         ))}
                                     </div>
 
-                                    <div className="bg-gray-800 p-4 rounded-xl text-xs text-left text-gray-400 border border-gray-700">
-                                        <strong className="text-white block mb-1">Active: Searching for {targetFindColor.name}</strong>
+                                    <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl text-xs text-left text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                                        <strong className="text-gray-900 dark:text-white block mb-1">Active: Searching for {targetFindColor.name}</strong>
                                         Everything else will appear Black & White.
                                     </div>
                                 </motion.div>
@@ -778,48 +871,48 @@ const ColorDetector = () => {
                                 colorInfo ? (
                                     <motion.div key={colorInfo.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full">
                                         <div className="mb-4">
-                                            <h2 className="text-4xl md:text-5xl font-black mb-1">{colorInfo.name}</h2>
-                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-md text-xs tracking-wider text-gray-400 border border-gray-700 font-mono mb-4">{colorInfo.hex}</div>
+                                            <h2 className="text-4xl md:text-5xl font-black mb-1 text-gray-900 dark:text-white">{colorInfo.name}</h2>
+                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-xs tracking-wider text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 font-mono mb-4">{colorInfo.hex}</div>
 
                                             {/* Feature Tabs */}
-                                            <div className="flex bg-gray-800 p-1 rounded-xl mb-4">
-                                                <button onClick={() => setDetailTab('info')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'info' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Details</button>
-                                                <button onClick={() => setDetailTab('harmony')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'harmony' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Harmonies</button>
-                                                <button onClick={() => setDetailTab('access')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'access' ? 'bg-teal-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Blindness</button>
+                                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-4">
+                                                <button onClick={() => setDetailTab('info')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'info' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>Details</button>
+                                                <button onClick={() => setDetailTab('harmony')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'harmony' ? 'bg-purple-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>Harmonies</button>
+                                                <button onClick={() => setDetailTab('access')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'access' ? 'bg-teal-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>Blindness</button>
                                             </div>
 
                                             {/* Tab Content */}
-                                            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 min-h-[180px]">
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700 min-h-[180px]">
                                                 {detailTab === 'info' && (
                                                     <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-left">
-                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">RGB</p><p className="font-mono text-sm">{colorInfo.rgb}</p></div>
-                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">HSL</p><p className="font-mono text-sm">{colorInfo.hsl[0]}°, {colorInfo.hsl[1]}%, {colorInfo.hsl[2]}%</p></div>
-                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">CMYK</p><p className="font-mono text-sm">{colorInfo.cmyk?.join(', ')}</p></div>
-                                                        <div><p className="text-[10px] text-gray-500 uppercase font-bold">Contrast</p><p className="text-sm text-green-400">{colorInfo.contrast}</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">RGB</p><p className="font-mono text-sm text-gray-700 dark:text-gray-300">{colorInfo.rgb}</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">HSL</p><p className="font-mono text-sm text-gray-700 dark:text-gray-300">{colorInfo.hsl[0]}°, {colorInfo.hsl[1]}%, {colorInfo.hsl[2]}%</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">CMYK</p><p className="font-mono text-sm text-gray-700 dark:text-gray-300">{colorInfo.cmyk?.join(', ')}</p></div>
+                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">Contrast</p><p className="text-sm text-green-600 dark:text-green-400">{colorInfo.contrast}</p></div>
                                                     </div>
                                                 )}
 
                                                 {detailTab === 'harmony' && (
-                                                    <div className="flex flex-col gap-2">
-                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.complementary }}></div><span className="text-xs">Complementary</span></div>
-                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.analogous[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.analogous[1] }}></div><span className="text-xs">Analogous</span></div>
-                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.triadic[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-600" style={{ background: colorInfo.harmonies.triadic[1] }}></div><span className="text-xs">Triadic</span></div>
+                                                    <div className="flex flex-col gap-2 text-gray-700 dark:text-gray-300">
+                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.complementary }}></div><span className="text-xs">Complementary</span></div>
+                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.analogous[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.analogous[1] }}></div><span className="text-xs">Analogous</span></div>
+                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.triadic[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.triadic[1] }}></div><span className="text-xs">Triadic</span></div>
                                                     </div>
                                                 )}
 
                                                 {detailTab === 'access' && (
                                                     <div className="grid grid-cols-3 gap-2">
                                                         <div className="text-center">
-                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-600" style={{ background: colorInfo.simulations.protan }}></div>
-                                                            <p className="text-[10px] text-gray-400">Protanopia</p>
+                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.simulations.protan }}></div>
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Protanopia</p>
                                                         </div>
                                                         <div className="text-center">
-                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-600" style={{ background: colorInfo.simulations.deutan }}></div>
-                                                            <p className="text-[10px] text-gray-400">Deuteranopia</p>
+                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.simulations.deutan }}></div>
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Deuteranopia</p>
                                                         </div>
                                                         <div className="text-center">
-                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-600" style={{ background: colorInfo.simulations.tritan }}></div>
-                                                            <p className="text-[10px] text-gray-400">Tritanopia</p>
+                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.simulations.tritan }}></div>
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Tritanopia</p>
                                                         </div>
                                                     </div>
                                                 )}
@@ -827,16 +920,121 @@ const ColorDetector = () => {
 
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto">
-                                            <button onClick={() => speak(colorInfo.name)} className="bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold flex items-center justify-center gap-2"><FaVolumeUp /> Speak</button>
-                                            <button onClick={saveToHistory} className="bg-gray-800 hover:bg-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border border-gray-700"><FaBookmark /> Save</button>
+                                            <motion.button
+                                                onClick={() => speak(colorInfo.name)}
+                                                whileHover={hoverLift}
+                                                whileTap={tapScale}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all"
+                                            >
+                                                <FaVolumeUp /> Speak
+                                            </motion.button>
+                                            <motion.button
+                                                onClick={saveToHistory}
+                                                whileHover={hoverLift}
+                                                whileTap={tapScale}
+                                                className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                                            >
+                                                <FaBookmark /> Save
+                                            </motion.button>
                                         </div>
                                         {patternEnabled && <div className="mt-4 text-xs text-yellow-500 bg-yellow-900/20 px-3 py-1 rounded inline-block">Pattern Overlay Active</div>}
                                     </motion.div>
                                 ) : (
-                                    <div className="text-gray-600">
-                                        <FaPalette className="text-6xl mx-auto mb-4 opacity-30 animate-pulse" />
-                                        <p className="text-xl font-bold">Ready</p>
-                                    </div>
+                                    <motion.div
+                                        key={`empty-${mode}`}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -20 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="flex flex-col items-center justify-center py-12 px-4 text-center"
+                                    >
+                                        {/* Icon */}
+                                        <motion.div
+                                            className="mb-6 p-6 rounded-full bg-gradient-to-br from-blue-500/10 to-purple-500/10 text-blue-500 dark:text-blue-400"
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 260,
+                                                damping: 20,
+                                                delay: 0.1
+                                            }}
+                                        >
+                                            <FaPalette className="w-12 h-12" />
+                                        </motion.div>
+
+                                        {/* Title */}
+                                        <motion.h3
+                                            className="text-2xl font-bold text-gray-900 dark:text-white mb-3"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ delay: 0.2 }}
+                                        >
+                                            Ready to Detect Colors
+                                        </motion.h3>
+
+                                        {/* Description */}
+                                        <motion.p
+                                            className="text-gray-600 dark:text-gray-400 max-w-md mb-6 text-base"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ delay: 0.3 }}
+                                        >
+                                            {mode === 'camera'
+                                                ? 'Use the button on the left to start your camera and detect colors in real-time'
+                                                : mode === 'manual'
+                                                    ? 'Select a color using the color picker above to analyze it'
+                                                    : mode === 'find'
+                                                        ? 'Choose a color to find and start your camera to locate it'
+                                                        : 'Match colors from your outfit using the camera'
+                                            }
+                                        </motion.p>
+
+                                        {/* Quick Tips */}
+                                        <motion.div
+                                            className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-md"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.4 }}
+                                        >
+                                            <div className="flex items-start gap-3 text-left">
+                                                <FaInfoCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                                                <div className="text-sm text-blue-900 dark:text-blue-100">
+                                                    <p className="font-semibold mb-2">Quick Tips:</p>
+                                                    <ul className="space-y-1 text-blue-800 dark:text-blue-200">
+                                                        {mode === 'camera' && (
+                                                            <>
+                                                                <li>• Point camera at objects for instant color detection</li>
+                                                                <li>• Use voice feedback for hands-free operation</li>
+                                                                <li>• Save colors to build your collection</li>
+                                                            </>
+                                                        )}
+                                                        {mode === 'manual' && (
+                                                            <>
+                                                                <li>• Use the Color Picker to select a specific color</li>
+                                                                <li>• Enter a HEX code (e.g., #FF5733) directly</li>
+                                                                <li>• Use the Random button to explore new shades</li>
+                                                            </>
+                                                        )}
+                                                        {mode === 'find' && (
+                                                            <>
+                                                                <li>• Select a target color category above</li>
+                                                                <li>• Point camera around; target items will stay colored</li>
+                                                                <li>• Non-matching items will appear black & white</li>
+                                                            </>
+                                                        )}
+                                                        {mode === 'match' && (
+                                                            <>
+                                                                <li>• Capture your Top and Bottom pieces separately</li>
+                                                                <li>• Get an instant compatibility score out of 10</li>
+                                                                <li>• Receive style advice based on color theory</li>
+                                                            </>
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
                                 )
                             )}
                         </AnimatePresence>

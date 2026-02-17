@@ -112,17 +112,17 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-md bg-[#0a0f1c] text-white rounded-3xl shadow-2xl overflow-hidden border border-white/10"
+                    className="relative w-full max-w-md bg-white dark:bg-[#0a0f1c] text-gray-900 dark:text-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10"
                 >
                     {/* Header */}
-                    <div className="p-6 border-b border-white/5 flex justify-between items-start">
+                    <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-start">
                         <div>
                             <h2 className="text-2xl font-bold">Settings</h2>
-                            <p className="text-gray-400 text-sm mt-1">Personalize your experience</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Personalize your experience</p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-2 -mr-2 text-gray-400 hover:text-white transition-colors"
+                            className="p-2 -mr-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
                             <FaTimes size={20} />
                         </button>
@@ -136,21 +136,21 @@ const SettingsModal = ({ isOpen, onClose }) => {
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
                                         {section.title}
                                     </h3>
-                                    <div className="bg-[#111] rounded-2xl overflow-hidden border border-white/5 space-y-1">
+                                    <div className="bg-gray-50 dark:bg-[#111] rounded-2xl overflow-hidden border border-gray-200 dark:border-white/5 space-y-1">
                                         {section.items.map((item, itemIdx) => (
                                             <div
                                                 key={itemIdx}
-                                                className={`p-4 ${itemIdx !== section.items.length - 1 ? 'border-b border-white/5' : ''}`}
+                                                className={`p-4 ${itemIdx !== section.items.length - 1 ? 'border-b border-gray-200 dark:border-white/5' : ''}`}
                                             >
                                                 {item.type === 'dropdown' ? (
                                                     <div className="flex items-center gap-4">
-                                                        <div className="p-2 bg-white/5 rounded-full">{item.icon}</div>
+                                                        <div className="p-2 bg-white dark:bg-white/5 rounded-full shadow-sm dark:shadow-none border border-gray-100 dark:border-transparent">{item.icon}</div>
                                                         <div className="flex-1">
                                                             <p className="font-semibold text-sm">{item.label}</p>
                                                             <select
                                                                 value={item.value}
                                                                 onChange={(e) => item.onChange(e.target.value)}
-                                                                className="mt-2 w-full bg-[#0a0f1c] border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                                                className="mt-2 w-full bg-white dark:bg-[#0a0f1c] border border-gray-300 dark:border-white/20 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
                                                             >
                                                                 {item.options.map(opt => (
                                                                     <option key={opt.value} value={opt.value}>
@@ -163,17 +163,17 @@ const SettingsModal = ({ isOpen, onClose }) => {
                                                 ) : (
                                                     <div className="flex items-center justify-between gap-4">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="p-2 bg-white/5 rounded-full">{item.icon}</div>
+                                                            <div className="p-2 bg-white dark:bg-white/5 rounded-full shadow-sm dark:shadow-none border border-gray-100 dark:border-transparent">{item.icon}</div>
                                                             <div>
                                                                 <p className="font-semibold text-sm">{item.label}</p>
-                                                                <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.desc}</p>
                                                             </div>
                                                         </div>
 
                                                         {/* Toggle Switch */}
                                                         <button
                                                             onClick={() => item.onChange(!item.value)}
-                                                            className={`relative w-12 h-6 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-[#0a0f1c] ${item.value ? 'bg-blue-500' : 'bg-gray-700'
+                                                            className={`relative w-12 h-6 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-[#0a0f1c] ${item.value ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
                                                                 }`}
                                                         >
                                                             <span
@@ -182,7 +182,8 @@ const SettingsModal = ({ isOpen, onClose }) => {
                                                             />
                                                         </button>
                                                     </div>
-                                                )}
+                                                )
+                                                }
                                             </div>
                                         ))}
                                     </div>

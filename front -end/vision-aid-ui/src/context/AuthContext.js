@@ -153,6 +153,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const refreshProfile = async () => {
+        if (auth.currentUser) {
+            await auth.currentUser.reload();
+            setCurrentUser({ ...auth.currentUser });
+        }
+    };
+
     const value = {
         currentUser,
         loginWithGoogle,
@@ -160,6 +167,7 @@ export const AuthProvider = ({ children }) => {
         loginWithEmail,
         signupWithEmail,
         logout,
+        refreshProfile,
         loading
     };
 

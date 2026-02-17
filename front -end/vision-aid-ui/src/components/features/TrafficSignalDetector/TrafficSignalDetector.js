@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { FaCamera, FaVideo, FaInfoCircle, FaVolumeUp, FaStop, FaHistory, FaCrosshairs, FaCircle, FaSquare, FaPlay } from 'react-icons/fa';
+import { FaCamera, FaVideo, FaInfoCircle, FaVolumeUp, FaStop, FaHistory, FaCrosshairs, FaCircle, FaSquare, FaPlay, FaBolt, FaDownload, FaSlidersH, FaBell, FaExclamationTriangle, FaArrowLeft, FaArrowRight, FaArrowUp } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { useColorHistory } from '../../../context/ColorHistoryContext';
+import EmptyState, { EmptyStateCompact } from '../../common/EmptyState';
 
 /**
  * Professional Traffic Signal Detector for Color Blind Users
@@ -14,6 +15,13 @@ import { useColorHistory } from '../../../context/ColorHistoryContext';
  * - Haptic feedback (mobile)
  * - Sound alerts
  * - Auto-focus assistance
+ * - Flashlight toggle
+ * - Screenshot capture
+ * - Volume controls
+ * - Distance warning
+ * - Low confidence alerts
+ * - Signal change notifications
+ * - Arrow direction detection (left/right/straight)
  */
 const TrafficSignalDetector = () => {
   const videoRef = useRef(null);
@@ -21,6 +29,8 @@ const TrafficSignalDetector = () => {
   const streamRef = useRef(null);
   const audioContextRef = useRef(null);
   const { addToHistory: addToGlobalHistory } = useColorHistory();
+  const noSignalTimeoutRef = useRef(null);
+  const lastSignalRef = useRef('No Signal');
 
   // State
   const [isDetecting, setIsDetecting] = useState(false);
@@ -30,8 +40,17 @@ const TrafficSignalDetector = () => {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticEnabled, setHapticEnabled] = useState(true);
-  const [showSettings, setShowSettings] = useState(false); // Kept for future use
+  const [showSettings, setShowSettings] = useState(false);
   const [detectionCount, setDetectionCount] = useState({ red: 0, yellow: 0, green: 0 });
+
+  // NEW: Enhanced Features State
+  const [flashlightOn, setFlashlightOn] = useState(false);
+  const [voiceVolume, setVoiceVolume] = useState(1.0);
+  const [soundVolume, setSoundVolume] = useState(0.3);
+  const [vibrationIntensity, setVibrationIntensity] = useState('medium'); // 'off', 'low', 'medium', 'high'
+  const [distanceWarning, setDistanceWarning] = useState(''); // 'too-far', 'optimal', 'too-close'
+  const [showVolumeControls, setShowVolumeControls] = useState(false);
+  const [arrowDirection, setArrowDirection] = useState(null); // 'left', 'right', 'straight', null
 
   // AI Integration
   const [isAiEnabled, setIsAiEnabled] = useState(true);
@@ -60,8 +79,8 @@ const TrafficSignalDetector = () => {
     }
   };
 
-  // Play tone for signal detection
-  const playTone = useCallback((frequency, duration = 200) => {
+  // Play tone for signal detection (with volume control and directional support)
+  const playTone = useCallback((frequency, duration = 200, direction = null) => {
     if (!soundEnabled) return;
 
     initAudio();
@@ -72,33 +91,290 @@ const TrafficSignalDetector = () => {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    oscillator.frequency.value = frequency;
     oscillator.type = 'sine';
 
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    // Use soundVolume state
+    gainNode.gain.setValueAtTime(soundVolume, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+
+    // Directional tone patterns for arrows
+    if (direction === 'left') {
+      // Descending tone for left arrow
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.8, audioContext.currentTime + duration / 1000);
+    } else if (direction === 'right') {
+      // Ascending tone for right arrow
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.2, audioContext.currentTime + duration / 1000);
+    } else if (direction === 'straight') {
+      // Double beep for straight arrow
+      oscillator.frequency.value = frequency;
+      // Will play twice in the calling function
+    } else {
+      // Standard steady tone
+      oscillator.frequency.value = frequency;
+    }
 
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + duration / 1000);
-  }, [soundEnabled]);
+  }, [soundEnabled, soundVolume]);
 
-  // Vibrate for haptic feedback
+  // Vibrate for haptic feedback (with intensity control)
   const vibrate = useCallback((pattern) => {
-    if (!hapticEnabled || !navigator.vibrate) return;
-    navigator.vibrate(pattern);
-  }, [hapticEnabled]);
+    if (!hapticEnabled || vibrationIntensity === 'off') return;
 
-  // Speak signal status
+    // Adjust pattern based on intensity
+    let adjustedPattern = pattern;
+    if (Array.isArray(pattern)) {
+      const multiplier = vibrationIntensity === 'low' ? 0.5 : vibrationIntensity === 'high' ? 1.5 : 1;
+      adjustedPattern = pattern.map(val => Math.round(val * multiplier));
+    }
+
+    // Check for vibration API support
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(adjustedPattern);
+      } catch (e) {
+        console.warn('Vibration failed:', e);
+      }
+    } else if ('mozVibrate' in navigator) {
+      try {
+        navigator.mozVibrate(adjustedPattern);
+      } catch (e) {
+        console.warn('Vibration failed:', e);
+      }
+    } else if ('webkitVibrate' in navigator) {
+      try {
+        navigator.webkitVibrate(adjustedPattern);
+      } catch (e) {
+        console.warn('Vibration failed:', e);
+      }
+    }
+  }, [hapticEnabled, vibrationIntensity]);
+
+  // Speak signal status (with volume control)
   const speak = useCallback((text) => {
     if (!voiceEnabled || !('speechSynthesis' in window)) return;
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0; // Slightly faster for immediate feedback
+    utterance.rate = 1.0;
     utterance.pitch = 1.0;
-    utterance.volume = 1.0;
+    utterance.volume = voiceVolume; // Use voiceVolume state
     window.speechSynthesis.speak(utterance);
-  }, [voiceEnabled]);
+  }, [voiceEnabled, voiceVolume]);
+
+  // NEW: Toggle Flashlight
+  const toggleFlashlight = useCallback(async () => {
+    if (!streamRef.current) return;
+
+    try {
+      const track = streamRef.current.getVideoTracks()[0];
+      const capabilities = track.getCapabilities();
+
+      if (!capabilities.torch) {
+        toast.error('Flashlight not supported on this device');
+        return;
+      }
+
+      const newState = !flashlightOn;
+      await track.applyConstraints({
+        advanced: [{ torch: newState }]
+      });
+
+      setFlashlightOn(newState);
+      toast.success(newState ? '🔦 Flashlight ON' : 'Flashlight OFF');
+    } catch (err) {
+      console.error('Flashlight error:', err);
+      toast.error('Could not toggle flashlight');
+    }
+  }, [flashlightOn]);
+
+  // NEW: Capture Screenshot
+  const captureScreenshot = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    try {
+      const canvas = canvasRef.current;
+      const dataUrl = canvas.toDataURL('image/png');
+
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `traffic-signal-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      toast.success('📸 Screenshot saved!');
+      speak('Screenshot captured');
+    } catch (err) {
+      console.error('Screenshot error:', err);
+      toast.error('Could not save screenshot');
+    }
+  }, [speak]);
+
+  // NEW: Check Distance (based on detection box size)
+  const checkDistance = useCallback((detectionSize) => {
+    // detectionSize is the percentage of frame covered by traffic light
+    if (detectionSize < 5) {
+      setDistanceWarning('too-far');
+      return 'too-far';
+    } else if (detectionSize > 40) {
+      setDistanceWarning('too-close');
+      return 'too-close';
+    } else {
+      setDistanceWarning('optimal');
+      return 'optimal';
+    }
+  }, []);
+
+  // NEW: No Signal Timeout Handler
+  useEffect(() => {
+    if (isDetecting && signalStatus === 'No Signal') {
+      // Start timeout
+      noSignalTimeoutRef.current = setTimeout(() => {
+        toast('⚠️ No traffic light detected\nPoint camera at traffic light', {
+          icon: '🚦',
+          duration: 3000,
+        });
+        speak('No traffic light detected. Please point camera at traffic light.');
+        vibrate([200, 100, 200]);
+      }, 5000); // 5 seconds
+    } else {
+      // Clear timeout if signal detected
+      if (noSignalTimeoutRef.current) {
+        clearTimeout(noSignalTimeoutRef.current);
+        noSignalTimeoutRef.current = null;
+      }
+    }
+
+    return () => {
+      if (noSignalTimeoutRef.current) {
+        clearTimeout(noSignalTimeoutRef.current);
+      }
+    };
+  }, [isDetecting, signalStatus, speak, vibrate]);
+
+  // NEW: Signal Change Detection
+  useEffect(() => {
+    if (signalStatus !== 'No Signal' && signalStatus !== lastSignalRef.current && lastSignalRef.current !== 'No Signal') {
+      // Signal changed!
+      const changeMessage = `Signal changed from ${lastSignalRef.current} to ${signalStatus}`;
+      toast(changeMessage, {
+        icon: '🔄',
+        duration: 2000,
+      });
+      speak(changeMessage);
+    }
+    lastSignalRef.current = signalStatus;
+  }, [signalStatus, speak]);
+
+  // NEW: Detect Arrow Direction in Green Light
+  const detectArrowDirection = useCallback((imageData, x, y, width, height) => {
+    // Only detect arrows for green lights
+    if (!imageData) return null;
+
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = width;
+      canvas.height = height;
+
+      // Extract the region of interest
+      ctx.putImageData(imageData, -x, -y);
+      const regionData = ctx.getImageData(0, 0, width, height);
+      const data = regionData.data;
+
+      // Divide region into quadrants for analysis
+      const midX = width / 2;
+      const midY = height / 2;
+
+      let leftPixels = 0;
+      let rightPixels = 0;
+      let topPixels = 0;
+      let bottomPixels = 0;
+      let centerPixels = 0;
+
+      // Count bright pixels in each region
+      for (let py = 0; py < height; py++) {
+        for (let px = 0; px < width; px++) {
+          const idx = (py * width + px) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+
+          // Check if pixel is bright (part of the arrow/circle)
+          const brightness = (r + g + b) / 3;
+          if (brightness > 100) {
+            // Determine which region this pixel belongs to
+            const distFromCenterX = Math.abs(px - midX);
+            const distFromCenterY = Math.abs(py - midY);
+
+            // Center region (for detecting circles)
+            if (distFromCenterX < width * 0.2 && distFromCenterY < height * 0.2) {
+              centerPixels++;
+            }
+
+            // Left region (for left arrow)
+            if (px < midX * 0.6) {
+              leftPixels++;
+            }
+
+            // Right region (for right arrow)
+            if (px > midX * 1.4) {
+              rightPixels++;
+            }
+
+            // Top region (for straight arrow)
+            if (py < midY * 0.6) {
+              topPixels++;
+            }
+
+            // Bottom region
+            if (py > midY * 1.4) {
+              bottomPixels++;
+            }
+          }
+        }
+      }
+
+      const totalPixels = leftPixels + rightPixels + topPixels + bottomPixels + centerPixels;
+      if (totalPixels < 50) return null; // Not enough data
+
+      // Calculate ratios
+      const leftRatio = leftPixels / totalPixels;
+      const rightRatio = rightPixels / totalPixels;
+      const topRatio = topPixels / totalPixels;
+      const centerRatio = centerPixels / totalPixels;
+
+      // Determine arrow direction based on pixel distribution
+      const threshold = 0.15; // 15% threshold
+
+      // Left arrow: more pixels on the left
+      if (leftRatio > threshold && leftRatio > rightRatio && leftRatio > topRatio) {
+        return 'left';
+      }
+
+      // Right arrow: more pixels on the right
+      if (rightRatio > threshold && rightRatio > leftRatio && rightRatio > topRatio) {
+        return 'right';
+      }
+
+      // Straight arrow: more pixels on top
+      if (topRatio > threshold && topRatio > leftRatio && topRatio > rightRatio) {
+        return 'straight';
+      }
+
+      // Circle: pixels evenly distributed or concentrated in center
+      if (centerRatio > 0.3) {
+        return null; // Circle (no arrow)
+      }
+
+      return null; // Default to no arrow
+    } catch (error) {
+      console.error('Arrow detection error:', error);
+      return null;
+    }
+  }, []);
 
   // Start Camera
   const startCamera = async () => {
@@ -158,15 +434,35 @@ const TrafficSignalDetector = () => {
   }, [isDetecting]);
 
   // Add to history
-  const addToHistory = useCallback((signal, conf) => {
+  const addToHistory = useCallback((signal, conf, arrow = null) => {
     // 1. Local History (Sidebar)
     const timestamp = new Date();
+
+    // Generate icon based on signal and arrow
+    let icon = signal === 'Red Light' ? '🔴' : signal === 'Yellow Light' ? '🟡' : '🟢';
+    let displaySignal = signal;
+
+    // Add arrow to display if present
+    if (signal === 'Green Light' && arrow) {
+      if (arrow === 'left') {
+        icon = '🟢 ←';
+        displaySignal = 'Green Left Arrow';
+      } else if (arrow === 'right') {
+        icon = '🟢 →';
+        displaySignal = 'Green Right Arrow';
+      } else if (arrow === 'straight') {
+        icon = '🟢 ↑';
+        displaySignal = 'Green Straight Arrow';
+      }
+    }
+
     const entry = {
       id: timestamp.getTime(),
-      signal,
+      signal: displaySignal,
       confidence: conf,
       time: timestamp.toLocaleTimeString(),
-      icon: signal === 'Red Light' ? '🔴' : signal === 'Yellow Light' ? '🟡' : '🟢'
+      icon,
+      arrow // Store arrow direction
     };
 
     setDetectionHistory(prev => [entry, ...prev].slice(0, 10));
@@ -192,7 +488,15 @@ const TrafficSignalDetector = () => {
         colorName = 'Traffic Signal: Yellow';
       } else if (signal === 'Green Light') {
         hexColor = '#22c55e';
-        colorName = 'Traffic Signal: Green';
+        if (arrow === 'left') {
+          colorName = 'Traffic Signal: Green Left Arrow';
+        } else if (arrow === 'right') {
+          colorName = 'Traffic Signal: Green Right Arrow';
+        } else if (arrow === 'straight') {
+          colorName = 'Traffic Signal: Green Straight Arrow';
+        } else {
+          colorName = 'Traffic Signal: Green';
+        }
       }
 
       addToGlobalHistory({
@@ -339,10 +643,11 @@ const TrafficSignalDetector = () => {
         if (s > 60 && v > 60) redCount++;
       }
 
-      // YELLOW: Hue 18-60
-      // Amber lights are very specific
-      else if (h > 18 && h < 60) {
-        if (s > 60 && v > 60) yellowCount++;
+      // YELLOW: Hue 35-65 (Expanded range for amber/yellow traffic lights)
+      // Yellow/amber lights can vary significantly in hue
+      // Lower saturation threshold as yellow can appear washed out
+      else if (h >= 35 && h <= 65) {
+        if (s > 45 && v > 55) yellowCount++;
       }
 
       // GREEN: Hue 80-190 (allowing for bluish/cyan greens common in LEDs)
@@ -373,6 +678,22 @@ const TrafficSignalDetector = () => {
     } else if (greenCount > redCount && greenCount > yellowCount && greenCount > minPixelThreshold && greenCount > 50) {
       currentFrameStatus = 'Green Light';
       currentConfidence = Math.min(99, Math.round((greenCount / (redCount + greenCount + yellowCount + 1)) * 100));
+
+      // NEW: Detect arrow direction for green lights
+      // Find the brightest green region for arrow detection
+      const greenRegionSize = Math.min(canvas.width, canvas.height) / 4;
+      const greenRegionX = Math.floor((canvas.width - greenRegionSize) / 2);
+      const greenRegionY = Math.floor((canvas.height - greenRegionSize) / 2);
+
+      const detectedArrow = detectArrowDirection(
+        imageData,
+        greenRegionX,
+        greenRegionY,
+        Math.floor(greenRegionSize),
+        Math.floor(greenRegionSize)
+      );
+
+      setArrowDirection(detectedArrow);
     }
 
     // 5. HYBRID AI CHECK
@@ -408,25 +729,58 @@ const TrafficSignalDetector = () => {
       setSignalStatus(mostFrequent);
       setConfidence(currentConfidence > 0 ? currentConfidence : 50); // Fallback confidence
 
-      // Feedback
-      speak(mostFrequent);
+      // NEW: Low Confidence Warning
+      if (currentConfidence < 60 && currentConfidence > 0) {
+        toast.warning(`⚠️ Low confidence (${currentConfidence}%)\nPlease verify signal`, {
+          duration: 2000,
+        });
+      }
+
+      // Feedback with arrow direction support
+      let announcement = mostFrequent;
 
       if (mostFrequent === 'Red Light') {
         playTone(350, 400); // Low warning tone
-        vibrate([300, 50, 300]);
+        vibrate([300, 100, 300]); // Long-short-long pattern for RED (danger)
+        speak(announcement);
       } else if (mostFrequent === 'Yellow Light') {
         playTone(550, 300); // Mid tone
-        vibrate([200]);
+        vibrate([200, 100, 200]); // Medium double pulse for YELLOW (caution)
+        speak(announcement);
       } else if (mostFrequent === 'Green Light') {
-        playTone(850, 200); // High positive tone
-        vibrate([100, 50, 100]);
+        // NEW: Arrow-specific announcements and feedback
+        if (arrowDirection === 'left') {
+          announcement = 'Green arrow - turn left safe';
+          playTone(850, 250, 'left'); // Descending tone
+          vibrate([100, 50, 100]); // Short double pulse
+        } else if (arrowDirection === 'right') {
+          announcement = 'Green arrow - turn right safe';
+          playTone(850, 250, 'right'); // Ascending tone
+          vibrate([150, 50, 150]); // Medium double pulse
+        } else if (arrowDirection === 'straight') {
+          announcement = 'Green arrow - go straight';
+          playTone(850, 150, 'straight'); // Double beep
+          setTimeout(() => playTone(850, 150, 'straight'), 200);
+          vibrate([100, 50, 100, 50, 100]); // Triple short pulse
+        } else {
+          announcement = 'Green light - proceed with caution';
+          playTone(850, 200); // Standard high tone
+          vibrate([100, 50, 100, 50, 100]); // Triple short pulse
+        }
+        speak(announcement);
       }
 
-      addToHistory(mostFrequent, currentConfidence);
+      addToHistory(mostFrequent, currentConfidence, arrowDirection);
     } else if (statusHistory.current.every(s => s === 'No Signal')) {
       setSignalStatus('No Signal');
       setConfidence(0);
     }
+
+    // NEW: Distance Check (based on sample area size)
+    const frameArea = canvas.width * canvas.height;
+    const sampleArea = sampleW * sampleH;
+    const coveragePercent = (sampleArea / frameArea) * 100;
+    checkDistance(coveragePercent);
 
     // Draw HUD Box if signal detected
     if (signalStatus !== 'No Signal') {
@@ -436,7 +790,7 @@ const TrafficSignalDetector = () => {
       ctx.strokeRect(centerX - sampleW / 2, centerY - sampleH / 2, sampleW, sampleH);
     }
 
-  }, [signalStatus, speak, isDetecting, playTone, vibrate, addToHistory]);
+  }, [signalStatus, speak, isDetecting, playTone, vibrate, addToHistory, checkDistance]);
 
   // Detection Loop
   useEffect(() => {
@@ -446,147 +800,188 @@ const TrafficSignalDetector = () => {
     }
   }, [isDetecting, detectTrafficLight]);
 
-  // Get signal shape for accessibility
-  const getSignalShape = (signal) => {
+  // Get signal shape for accessibility (with arrow support)
+  const getSignalShape = (signal, arrow = null) => {
     if (signal === 'Red Light') return <FaCircle className="inline" />;
     if (signal === 'Yellow Light') return <FaSquare className="inline rotate-45" />;
-    if (signal === 'Green Light') return <FaPlay className="inline rotate-90" />;
+    if (signal === 'Green Light') {
+      // Show arrow icon if present
+      if (arrow === 'left') return <FaArrowLeft className="inline" />;
+      if (arrow === 'right') return <FaArrowRight className="inline" />;
+      if (arrow === 'straight') return <FaArrowUp className="inline" />;
+      return <FaPlay className="inline rotate-90" />;
+    }
     return null;
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pt-24 pb-10 font-sans selection:bg-blue-500/30">
-      <div className="w-full max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white p-4 pt-24 pb-20 font-sans selection:bg-blue-500/30 transition-colors duration-300">
+      <div className="w-full max-w-7xl mx-auto">{/* Header */}
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full bg-gray-900 border border-gray-800 text-gray-400 text-xs font-bold uppercase tracking-widest shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold uppercase tracking-widest shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
             Accessibility Enhanced
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2">
-            Traffic Signal <span className="text-blue-500">Detector</span>
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">
+            Traffic Signal <span className="text-blue-600 dark:text-blue-500">Detector</span>
           </h1>
-          <p className="text-gray-400 text-sm md:text-base mb-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm md:text-base mb-4">
             Professional AI-native detection for color blind accessibility
           </p>
 
           {/* Quick Stats */}
           {isDetecting && (
             <div className="flex justify-center gap-4 mt-4 flex-wrap">
-              <div className="px-4 py-2 bg-red-900/20 border border-red-900/30 rounded-xl">
-                <span className="text-red-400 font-bold">{detectionCount.red}</span>
-                <span className="text-gray-500 text-sm ml-2">Red</span>
+              <div className="px-4 py-2 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl">
+                <span className="text-red-600 dark:text-red-400 font-bold">{detectionCount.red}</span>
+                <span className="text-gray-600 dark:text-gray-500 text-sm ml-2">Red</span>
               </div>
-              <div className="px-4 py-2 bg-yellow-900/20 border border-yellow-900/30 rounded-xl">
-                <span className="text-yellow-400 font-bold">{detectionCount.yellow}</span>
-                <span className="text-gray-500 text-sm ml-2">Yellow</span>
+              <div className="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-xl">
+                <span className="text-yellow-600 dark:text-yellow-400 font-bold">{detectionCount.yellow}</span>
+                <span className="text-gray-600 dark:text-gray-500 text-sm ml-2">Yellow</span>
               </div>
-              <div className="px-4 py-2 bg-green-900/20 border border-green-900/30 rounded-xl">
-                <span className="text-green-400 font-bold">{detectionCount.green}</span>
-                <span className="text-gray-500 text-sm ml-2">Green</span>
+              <div className="px-4 py-2 bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-xl">
+                <span className="text-green-600 dark:text-green-400 font-bold">{detectionCount.green}</span>
+                <span className="text-gray-600 dark:text-gray-500 text-sm ml-2">Green</span>
               </div>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Main Content Grid - Fixed Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-8 relative items-start">
           {/* Camera View - Main */}
-          <div className="lg:col-span-2">
-            <div className="relative min-h-[500px] md:aspect-video bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-800">
+          <div className="w-full">
+            {/* Camera Container with 16:9 Aspect Ratio */}
+            <div className="relative w-full aspect-video bg-gray-100 dark:bg-gradient-to-br dark:from-gray-900 dark:via-black dark:to-gray-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-gray-200 dark:border-gray-800/50 hover:border-gray-300 dark:hover:border-gray-700/50 transition-all duration-300">
+
+              {/* Gradient Border Effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none z-[1]" />
 
               <video
                 ref={videoRef}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-contain bg-black z-0"
                 playsInline
                 muted
               />
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0 w-full h-full pointer-events-none"
+                className="absolute inset-0 w-full h-full pointer-events-none z-[2]"
               />
 
-              {/* Crosshair Guide */}
+              {/* Crosshair Guide - Centered */}
               {isDetecting && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <FaCrosshairs className="text-6xl text-white/20" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[3]">
+                  <FaCrosshairs className="text-5xl text-white/10" />
                 </div>
               )}
 
-              {/* Status Overlay */}
+              {/* Status Overlay - Top with better spacing */}
               {isDetecting && signalStatus !== 'No Signal' && (
                 <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="absolute top-6 left-6 right-6"
+                  initial={{ scale: 0.9, opacity: 0, y: -20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  className="absolute top-4 left-4 right-4 z-[15]"
                 >
-                  <div className={`p-6 rounded-2xl backdrop-blur-md border-2 ${signalStatus === 'Red Light' ? 'bg-red-900/40 border-red-500' :
-                    signalStatus === 'Yellow Light' ? 'bg-yellow-900/40 border-yellow-500' :
-                      'bg-green-900/40 border-green-500'
+                  <div className={`p-5 rounded-2xl backdrop-blur-xl border-2 shadow-2xl ${signalStatus === 'Red Light'
+                    ? 'bg-red-100/90 dark:bg-red-900/50 border-red-500/60 shadow-red-500/20'
+                    : signalStatus === 'Yellow Light'
+                      ? 'bg-yellow-100/90 dark:bg-yellow-900/50 border-yellow-500/60 shadow-yellow-500/20'
+                      : 'bg-green-100/90 dark:bg-green-900/50 border-green-500/60 shadow-green-500/20'
                     }`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="text-5xl">
-                          {signalStatus === 'Red Light' && <FaCircle className="text-red-500" />}
-                          {signalStatus === 'Yellow Light' && <FaSquare className="text-yellow-500 rotate-45" />}
-                          {signalStatus === 'Green Light' && <FaPlay className="text-green-500 rotate-90" />}
+                        <div className="text-4xl drop-shadow-lg">
+                          {signalStatus === 'Red Light' && <FaCircle className="text-red-400" />}
+                          {signalStatus === 'Yellow Light' && <FaSquare className="text-yellow-400 rotate-45" />}
+                          {signalStatus === 'Green Light' && !arrowDirection && <FaPlay className="text-green-400 rotate-90" />}
+                          {signalStatus === 'Green Light' && arrowDirection === 'left' && <FaArrowLeft className="text-green-400" />}
+                          {signalStatus === 'Green Light' && arrowDirection === 'right' && <FaArrowRight className="text-green-400" />}
+                          {signalStatus === 'Green Light' && arrowDirection === 'straight' && <FaArrowUp className="text-green-400" />}
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-white">{signalStatus}</div>
-                          <div className="text-sm text-gray-300">Confidence: {confidence}%</div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white drop-shadow-md">
+                            {signalStatus}
+                            {signalStatus === 'Green Light' && arrowDirection && (
+                              <span className="text-base ml-2">
+                                {arrowDirection === 'left' && '- Turn Left'}
+                                {arrowDirection === 'right' && '- Turn Right'}
+                                {arrowDirection === 'straight' && '- Go Straight'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-700 dark:text-gray-200/90 font-medium">Confidence: {confidence}%</div>
                         </div>
                       </div>
                       {/* Confidence Bar */}
                       <div className="hidden sm:block w-32">
-                        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
                           <div
-                            className={`h-full transition-all ${signalStatus === 'Red Light' ? 'bg-red-500' :
-                              signalStatus === 'Yellow Light' ? 'bg-yellow-500' :
-                                'bg-green-500'
+                            className={`h-full transition-all duration-300 ${signalStatus === 'Red Light' ? 'bg-red-400' :
+                              signalStatus === 'Yellow Light' ? 'bg-yellow-400' :
+                                'bg-green-400'
                               }`}
                             style={{ width: `${confidence}%` }}
                           />
                         </div>
-                        {aiStatus === 'active' && <div className="text-[10px] text-right text-blue-400 mt-1">AI Verified</div>}
+                        {aiStatus === 'active' && (
+                          <div className="text-[10px] text-right text-blue-300 mt-1.5 font-semibold">
+                            ✓ AI Verified
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* Visual Traffic Light Indicator */}
-              <div className="absolute top-6 right-6 z-20 flex flex-col items-center bg-gray-900/90 backdrop-blur-sm border-4 border-gray-800 rounded-3xl p-3 shadow-2xl">
-                <div className="absolute -top-3 w-full h-4 bg-gray-800 rounded-t-xl" />
+              {/* Visual Traffic Light Indicator - Compact & Elegant */}
+              <div className="absolute top-4 right-4 z-[20] flex flex-col items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 rounded-3xl p-3 shadow-2xl">
+                <div className="absolute -top-2 w-full h-3 bg-gradient-to-b from-gray-800 to-transparent rounded-t-3xl" />
 
-                <div className="flex flex-col gap-3 pt-2">
+                <div className="flex flex-col gap-2.5 pt-1">
                   {/* Red */}
                   <div className="relative">
-                    <div className={`w-12 h-12 rounded-full border-2 border-black transition-all duration-300 flex items-center justify-center ${signalStatus === 'Red Light'
-                      ? 'bg-red-600 shadow-[0_0_30px_#ef4444] scale-110'
-                      : 'bg-red-950/30 opacity-60'
+                    <div className={`w-11 h-11 rounded-full border-2 border-gray-100 dark:border-black/50 transition-all duration-300 flex items-center justify-center ${signalStatus === 'Red Light'
+                      ? 'bg-red-500 shadow-[0_0_25px_#ef4444] scale-110'
+                      : 'bg-red-100/50 dark:bg-red-950/40'
                       }`}>
-                      {signalStatus === 'Red Light' && <FaCircle className="text-white text-xs" />}
+                      {signalStatus === 'Red Light' && (
+                        <FaCircle className="text-white text-lg drop-shadow-lg" />
+                      )}
                     </div>
                   </div>
 
                   {/* Yellow */}
                   <div className="relative">
-                    <div className={`w-12 h-12 rounded-full border-2 border-black transition-all duration-300 flex items-center justify-center ${signalStatus === 'Yellow Light'
-                      ? 'bg-yellow-500 shadow-[0_0_30px_#eab308] scale-110'
-                      : 'bg-yellow-950/30 opacity-60'
+                    <div className={`w-11 h-11 rounded-full border-2 border-gray-100 dark:border-black/50 transition-all duration-300 flex items-center justify-center ${signalStatus === 'Yellow Light'
+                      ? 'bg-yellow-500 shadow-[0_0_25px_#eab308] scale-110'
+                      : 'bg-yellow-100/50 dark:bg-yellow-950/40'
                       }`}>
-                      {signalStatus === 'Yellow Light' && <FaSquare className="text-white text-xs rotate-45" />}
+                      {signalStatus === 'Yellow Light' && (
+                        <FaSquare className="text-white text-sm rotate-45 drop-shadow-lg" />
+                      )}
                     </div>
                   </div>
 
                   {/* Green */}
                   <div className="relative">
-                    <div className={`w-12 h-12 rounded-full border-2 border-black transition-all duration-300 flex items-center justify-center ${signalStatus === 'Green Light'
-                      ? 'bg-green-500 shadow-[0_0_30px_#22c55e] scale-110'
-                      : 'bg-green-950/30 opacity-60'
+                    <div className={`w-11 h-11 rounded-full border-2 border-gray-100 dark:border-black/50 transition-all duration-300 flex items-center justify-center ${signalStatus === 'Green Light'
+                      ? 'bg-green-500 shadow-[0_0_25px_#22c55e] scale-110'
+                      : 'bg-green-100/50 dark:bg-green-950/40'
                       }`}>
-                      {signalStatus === 'Green Light' && <FaPlay className="text-white text-xs rotate-90" />}
+                      {signalStatus === 'Green Light' && (
+                        <>
+                          {!arrowDirection && <FaPlay className="text-white text-sm rotate-90 drop-shadow-lg" />}
+                          {arrowDirection === 'left' && <FaArrowLeft className="text-white text-sm drop-shadow-lg" />}
+                          {arrowDirection === 'right' && <FaArrowRight className="text-white text-sm drop-shadow-lg" />}
+                          {arrowDirection === 'straight' && <FaArrowUp className="text-white text-sm drop-shadow-lg" />}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -594,102 +989,241 @@ const TrafficSignalDetector = () => {
 
               {/* Camera Access Screen */}
               {!isDetecting && (
-                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4">
-                  <div className="p-6 rounded-3xl bg-gray-900/50 border border-white/5 text-center max-w-md w-full max-h-full overflow-y-auto">
-                    <div className="w-20 h-20 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/20">
-                      <FaCamera className="text-4xl text-blue-500" />
+                <div className="absolute inset-0 bg-white/95 dark:bg-gradient-to-br dark:from-black/95 dark:via-gray-900/95 dark:to-black/95 backdrop-blur-md flex items-center justify-center z-40 p-6">
+                  <div className="p-8 rounded-3xl bg-white/90 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/80 border-2 border-gray-100 dark:border-gray-700/50 text-center max-w-md w-full shadow-2xl backdrop-blur-xl">
+                    <div className="w-24 h-24 bg-blue-50 dark:bg-gradient-to-br dark:from-blue-600/30 dark:to-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border-2 border-blue-100 dark:border-blue-500/30 shadow-lg shadow-blue-500/20">
+                      <FaCamera className="text-5xl text-blue-500 dark:text-blue-400 drop-shadow-lg" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Camera Access Required</h3>
-                    <p className="text-gray-400 mb-8 leading-relaxed">
-                      Point your camera at a traffic light. You'll receive voice, sound, and visual feedback.
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 drop-shadow-md">Camera Access Required</h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed text-sm">
+                      Point your camera at a traffic light. You'll receive voice, sound, and visual feedback for safe navigation.
                     </p>
                     <button
                       onClick={startCamera}
-                      className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+                      className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-500/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
                     >
-                      Activate Camera <FaVideo />
+                      <FaVideo className="text-xl" /> Activate Camera
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Controls */}
+              {/* Controls - Bottom with better spacing */}
               {isDetecting && (
-                <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-30 px-4">
+                <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-3 z-[30] px-6">
                   <button
                     onClick={stopCamera}
-                    className="px-6 py-3 bg-red-600/90 hover:bg-red-500 text-white rounded-full font-bold backdrop-blur-md transition-all shadow-lg flex items-center gap-2 transform hover:scale-105"
+                    className="px-7 py-3.5 bg-red-600/95 hover:bg-red-500 text-white rounded-2xl font-bold backdrop-blur-xl transition-all shadow-xl shadow-red-500/20 flex items-center gap-2.5 transform hover:scale-105 active:scale-95 border border-red-500/30"
                   >
-                    <FaStop /> Stop
+                    <FaStop className="text-sm" /> Stop
+                  </button>
+
+                  {/* Flashlight Toggle */}
+                  <button
+                    onClick={toggleFlashlight}
+                    className={`px-7 py-3.5 rounded-2xl font-bold backdrop-blur-xl transition-all shadow-xl flex items-center gap-2.5 transform hover:scale-105 active:scale-95 border ${flashlightOn
+                      ? 'bg-yellow-500/95 hover:bg-yellow-400 text-black border-yellow-400/50 shadow-yellow-500/30'
+                      : 'bg-white/95 dark:bg-gray-800/95 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700/50 shadow-gray-200/30 dark:shadow-gray-900/30'
+                      }`}
+                  >
+                    <FaBolt className="text-sm" /> {flashlightOn ? 'Light ON' : 'Light'}
+                  </button>
+
+                  {/* Screenshot Button */}
+                  <button
+                    onClick={captureScreenshot}
+                    className="px-7 py-3.5 bg-green-600/95 hover:bg-green-500 text-white rounded-2xl font-bold backdrop-blur-xl transition-all shadow-xl shadow-green-500/20 flex items-center gap-2.5 transform hover:scale-105 active:scale-95 border border-green-500/30"
+                  >
+                    <FaDownload className="text-sm" /> Save
                   </button>
                 </div>
               )}
+
+              {/* Distance Warning Indicator - Better positioned */}
+              {isDetecting && distanceWarning && distanceWarning !== 'optimal' && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-28 left-1/2 transform -translate-x-1/2 z-[25]"
+                >
+                  {distanceWarning === 'too-far' && (
+                    <div className="px-5 py-2.5 bg-orange-500/95 backdrop-blur-xl rounded-full text-white text-sm font-bold shadow-xl shadow-orange-500/30 border border-orange-400/50 flex items-center gap-2">
+                      <FaExclamationTriangle /> Move Closer
+                    </div>
+                  )}
+                  {distanceWarning === 'too-close' && (
+                    <div className="px-5 py-2.5 bg-orange-500/95 backdrop-blur-xl rounded-full text-white text-sm font-bold shadow-xl shadow-orange-500/30 border border-orange-400/50 flex items-center gap-2">
+                      <FaExclamationTriangle /> Move Back
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Low Confidence Alert Overlay - Better positioned */}
+              {isDetecting && confidence > 0 && confidence < 60 && signalStatus !== 'No Signal' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-[25]"
+                >
+                  <div className="px-5 py-2.5 bg-red-500/95 backdrop-blur-xl rounded-full text-white text-sm font-bold shadow-xl shadow-red-500/30 border border-red-400/50 flex items-center gap-2">
+                    <FaExclamationTriangle /> Low Confidence - Verify Signal
+                  </div>
+                </motion.div>
+              )}
             </div>
 
-            {/* Settings Panel */}
-            <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <button
-                onClick={() => setVoiceEnabled(!voiceEnabled)}
-                className={`px-4 py-3 rounded-xl font-medium transition-all ${voiceEnabled
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400'
-                  }`}
-              >
-                <FaVolumeUp className="inline mr-2" />
-                Voice
-              </button>
-              <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`px-4 py-3 rounded-xl font-medium transition-all ${soundEnabled
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400'
-                  }`}
-              >
-                🔊 Sound
-              </button>
-              <button
-                onClick={() => setHapticEnabled(!hapticEnabled)}
-                className={`px-4 py-3 rounded-xl font-medium transition-all ${hapticEnabled
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400'
-                  }`}
-              >
-                📳 Haptic
-              </button>
+            {/* Settings Panel - Cleaner spacing */}
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">{/* Voice */}
+                <button
+                  onClick={() => setVoiceEnabled(!voiceEnabled)}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all ${voiceEnabled
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  <FaVolumeUp className="inline mr-2" />
+                  Voice
+                </button>
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all ${soundEnabled
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  🔊 Sound
+                </button>
+                <button
+                  onClick={() => setHapticEnabled(!hapticEnabled)}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all ${hapticEnabled
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  📳 Haptic
+                </button>
 
-              <button
-                onClick={() => setIsAiEnabled(!isAiEnabled)}
-                className={`px-4 py-3 rounded-xl font-medium transition-all border ${isAiEnabled
-                  ? 'bg-purple-600 border-purple-500 text-white'
-                  : 'bg-gray-800 border-gray-700 text-gray-400'
-                  }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  🤖 AI Mode
-                  {isAiEnabled && (
-                    <span className={`w-2 h-2 rounded-full ${aiStatus === 'active' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-                  )}
-                </span>
-              </button>
+                <button
+                  onClick={() => setIsAiEnabled(!isAiEnabled)}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all border ${isAiEnabled
+                    ? 'bg-purple-600 border-purple-500 text-white'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    🤖 AI Mode
+                    {isAiEnabled && (
+                      <span className={`w-2 h-2 rounded-full ${aiStatus === 'active' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                    )}
+                  </span>
+                </button>
+
+                {/* NEW: Volume Controls Toggle */}
+                <button
+                  onClick={() => setShowVolumeControls(!showVolumeControls)}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all ${showVolumeControls
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  <FaSlidersH className="inline mr-2" />
+                  Volume
+                </button>
+              </div>
+
+              {/* NEW: Volume Controls Panel */}
+              <AnimatePresence>
+                {showVolumeControls && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm"
+                  >
+                    <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
+                      <FaSlidersH className="text-blue-500" />
+                      Volume Controls
+                    </h4>
+
+                    <div className="space-y-4">
+                      {/* Voice Volume */}
+                      <div>
+                        <label className="text-sm text-gray-500 dark:text-gray-400 mb-2 block">
+                          Voice Volume: {Math.round(voiceVolume * 100)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={voiceVolume}
+                          onChange={(e) => setVoiceVolume(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                      </div>
+
+                      {/* Sound Volume */}
+                      <div>
+                        <label className="text-sm text-gray-500 dark:text-gray-400 mb-2 block">
+                          Sound Volume: {Math.round(soundVolume * 100)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={soundVolume}
+                          onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                      </div>
+
+                      {/* Vibration Intensity */}
+                      <div>
+                        <label className="text-sm text-gray-500 dark:text-gray-400 mb-2 block">
+                          Vibration Intensity
+                        </label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {['off', 'low', 'medium', 'high'].map((level) => (
+                            <button
+                              key={level}
+                              onClick={() => setVibrationIntensity(level)}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${vibrationIntensity === level
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                              {level.charAt(0).toUpperCase() + level.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
           {/* Detection History Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-gray-900 rounded-3xl border border-gray-800 p-6 h-full">
+          <div className="w-full">
+            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 h-[600px] lg:h-[650px] flex flex-col shadow-sm">{/* Header */}
               <div className="flex items-center gap-2 mb-6">
-                <FaHistory className="text-blue-500" />
-                <h3 className="text-xl font-bold">Detection History</h3>
+                <FaHistory className="text-blue-600 dark:text-blue-500" />
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Detection History</h3>
               </div>
 
               {detectionHistory.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <FaInfoCircle className="text-4xl mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">No detections yet</p>
-                  <p className="text-xs mt-2">Point camera at traffic light</p>
+                <div className="flex-1 flex items-center justify-center">
+                  <EmptyStateCompact
+                    icon={FaHistory}
+                    message="No detections yet. Start camera to detect traffic signals."
+                  />
                 </div>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
                   <AnimatePresence>
                     {detectionHistory.map((entry) => (
                       <motion.div
@@ -697,9 +1231,9 @@ const TrafficSignalDetector = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className={`p-4 rounded-xl border-2 ${entry.signal === 'Red Light' ? 'bg-red-900/20 border-red-900/30' :
-                          entry.signal === 'Yellow Light' ? 'bg-yellow-900/20 border-yellow-900/30' :
-                            'bg-green-900/20 border-green-900/30'
+                        className={`p-4 rounded-xl border-2 ${entry.signal === 'Red Light' ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30' :
+                          entry.signal === 'Yellow Light' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-900/30' :
+                            'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30'
                           }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -707,10 +1241,10 @@ const TrafficSignalDetector = () => {
                             <span className="text-2xl">{entry.icon}</span>
                             <span className="text-lg">{getSignalShape(entry.signal)}</span>
                           </div>
-                          <span className="text-xs text-gray-400">{entry.time}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{entry.time}</span>
                         </div>
-                        <div className="text-sm font-semibold">{entry.signal}</div>
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{entry.signal}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Confidence: {entry.confidence}%
                         </div>
                       </motion.div>
@@ -722,23 +1256,91 @@ const TrafficSignalDetector = () => {
           </div>
         </div>
 
-        {/* Feature Info */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl">
-            <div className="text-3xl mb-3">🔺</div>
-            <h4 className="font-bold text-lg mb-2">Shape Recognition</h4>
-            <p className="text-sm text-gray-400">Circle (Red), Diamond (Yellow), Triangle (Green)</p>
-          </div>
-          <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl">
-            <div className="text-3xl mb-3">🔊</div>
-            <h4 className="font-bold text-lg mb-2">Audio Feedback</h4>
-            <p className="text-sm text-gray-400">Voice announcements + unique sound tones</p>
-          </div>
-          <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl">
-            <div className="text-3xl mb-3">📳</div>
-            <h4 className="font-bold text-lg mb-2">Haptic Patterns</h4>
-            <p className="text-sm text-gray-400">Different vibration patterns for each signal</p>
-          </div>
+        {/* Feature Info - Premium Design */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">{/* Shape Recognition */}
+          {/* Shape Recognition */}
+          <motion.div
+            whileHover={{ scale: 1.02, y: -4 }}
+            transition={{ duration: 0.3 }}
+            className="group relative p-8 bg-white dark:bg-gradient-to-br dark:from-gray-900/90 dark:via-gray-900/50 dark:to-gray-900/90 backdrop-blur-xl border border-gray-200 dark:border-gray-800/50 rounded-3xl overflow-hidden hover:border-red-500/30 transition-all duration-300 shadow-xl hover:shadow-red-500/10"
+          >
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            {/* Icon Container */}
+            <div className="relative mb-6 w-16 h-16 bg-gradient-to-br from-red-500/20 to-pink-500/20 rounded-2xl flex items-center justify-center border border-red-500/20 group-hover:border-red-500/40 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-red-500/20">
+              <div className="text-4xl transform group-hover:scale-110 transition-transform duration-300">🔺</div>
+            </div>
+
+            {/* Content */}
+            <div className="relative">
+              <h4 className="font-bold text-xl mb-3 text-gray-900 dark:text-white group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors duration-300">
+                Shape Recognition
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors duration-300">
+                Circle (Red), Diamond (Yellow), Triangle (Green)
+              </p>
+            </div>
+
+            {/* Decorative Corner */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </motion.div>
+
+          {/* Audio Feedback */}
+          <motion.div
+            whileHover={{ scale: 1.02, y: -4 }}
+            transition={{ duration: 0.3 }}
+            className="group relative p-8 bg-white dark:bg-gradient-to-br dark:from-gray-900/90 dark:via-gray-900/50 dark:to-gray-900/90 backdrop-blur-xl border border-gray-200 dark:border-gray-800/50 rounded-3xl overflow-hidden hover:border-blue-500/30 transition-all duration-300 shadow-xl hover:shadow-blue-500/10"
+          >
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            {/* Icon Container */}
+            <div className="relative mb-6 w-16 h-16 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center border border-blue-500/20 group-hover:border-blue-500/40 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-blue-500/20">
+              <div className="text-4xl transform group-hover:scale-110 transition-transform duration-300">🔊</div>
+            </div>
+
+            {/* Content */}
+            <div className="relative">
+              <h4 className="font-bold text-xl mb-3 text-gray-900 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-300">
+                Audio Feedback
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors duration-300">
+                Voice announcements + unique sound tones
+              </p>
+            </div>
+
+            {/* Decorative Corner */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </motion.div>
+
+          {/* Haptic Patterns */}
+          <motion.div
+            whileHover={{ scale: 1.02, y: -4 }}
+            transition={{ duration: 0.3 }}
+            className="group relative p-8 bg-white dark:bg-gradient-to-br dark:from-gray-900/90 dark:via-gray-900/50 dark:to-gray-900/90 backdrop-blur-xl border border-gray-200 dark:border-gray-800/50 rounded-3xl overflow-hidden hover:border-orange-500/30 transition-all duration-300 shadow-xl hover:shadow-orange-500/10"
+          >
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            {/* Icon Container */}
+            <div className="relative mb-6 w-16 h-16 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-2xl flex items-center justify-center border border-orange-500/20 group-hover:border-orange-500/40 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-orange-500/20">
+              <div className="text-4xl transform group-hover:scale-110 transition-transform duration-300">📳</div>
+            </div>
+
+            {/* Content */}
+            <div className="relative">
+              <h4 className="font-bold text-xl mb-3 text-gray-900 dark:text-white group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors duration-300">
+                Haptic Patterns
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors duration-300">
+                Different vibration patterns for each signal
+              </p>
+            </div>
+
+            {/* Decorative Corner */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </motion.div>
         </div>
       </div>
 
