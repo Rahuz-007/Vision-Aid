@@ -7,16 +7,30 @@ import LoginModal from '../auth/LoginModal';
 import ProfileModal from '../auth/ProfileModal';
 import SettingsModal from './SettingsModal';
 import HelpCenterModal from './HelpCenterModal';
-import toast from 'react-hot-toast';
+import vaToast from '../../utils/toast';
 import {
     FaBars, FaTimes, FaBell, FaCog,
     FaUser, FaSignOutAlt, FaQuestionCircle, FaSlidersH, FaPalette,
-    FaVolumeUp, FaCheckDouble, FaInfoCircle, FaCheckCircle, FaExclamationTriangle
+    FaVolumeUp, FaCheckDouble, FaInfoCircle, FaCheckCircle, FaExclamationTriangle,
+    FaCamera, FaEye, FaExchangeAlt, FaTrafficLight, FaHistory, FaImages, FaChevronDown
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
-
-import { useSettings } from '../../context/SettingsContext'; // Add import
+import { useSettings } from '../../context/SettingsContext';
 import SearchBar from '../common/SearchBar';
+
+// All feature tools for the mega-dropdown
+const TOOLS = [
+    { label: 'Color Detector', desc: 'AI real-time camera color detection', to: '/color-picker', icon: FaCamera, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { label: 'Color Blindness Sim', desc: 'Simulate 9 vision deficiencies', to: '/simulator', icon: FaEye, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+    { label: 'Palette Checker', desc: 'WCAG contrast compliance checks', to: '/palette-checker', icon: FaExchangeAlt, color: 'text-green-500', bg: 'bg-green-500/10' },
+    { label: 'Traffic Signal AI', desc: 'Real-time signal detection', to: '/traffic-signal', icon: FaTrafficLight, color: 'text-red-500', bg: 'bg-red-500/10' },
+    { label: 'Color History', desc: 'Browse and manage saved colors', to: '/color-history', icon: FaHistory, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+    { label: 'Image Palette', desc: 'Extract palettes from any image', to: '/palette-extractor', icon: FaImages, color: 'text-pink-500', bg: 'bg-pink-500/10' },
+    { label: 'Palette Generator', desc: 'WCAG-compliant shade generator', to: '/palette-generator', icon: FaPalette, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+    { label: 'Vision Test', desc: 'Colour blindness screening test', to: '/color-test', icon: FaEye, color: 'text-teal-500', bg: 'bg-teal-500/10' },
+    { label: 'Colour Psychology', desc: 'Emotions & meanings behind colour', to: '/color-psychology', icon: FaSlidersH, color: 'text-rose-500', bg: 'bg-rose-500/10' },
+    { label: 'Text Accessibility', desc: 'Font size & weight contrast checker', to: '/text-checker', icon: FaCheckDouble, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+];
 
 const Header = () => {
     const { currentUser, logout } = useAuth();
@@ -62,22 +76,34 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isMobileMenuOpen]);
 
+    const [toolsOpen, setToolsOpen] = useState(false);
+    const toolsRef = useRef(null);
+
+    // Close tools dropdown on outside click
+    useEffect(() => {
+        const handler = (e) => {
+            if (toolsRef.current && !toolsRef.current.contains(e.target)) setToolsOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     const markAsRead = (id) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        toast.success("Marked as read");
+        vaToast.success('Marked as read');
     };
 
     const clearAllNotifications = () => {
         setNotifications([]);
-        toast.success("Notifications cleared");
+        vaToast.info('Notifications cleared');
     };
 
     const speakNotifications = () => {
         const unread = notifications.filter(n => !n.read);
         const textToSpeak = unread.length > 0
             ? `You have ${unread.length} new notifications. ${unread.map(n => n.text).join('. ')}`
-            : "No new notifications.";
-        speak(textToSpeak, true); // Use centralized speak function
+            : 'No new notifications.';
+        speak(textToSpeak, true);
     };
 
     const handleLogout = async () => {
@@ -85,19 +111,18 @@ const Header = () => {
             await logout();
             setSettingsOpen(false);
         } catch (error) {
-            console.error("Failed to log out", error);
+            console.error('Failed to log out', error);
         }
     };
 
     const navLinks = [
         { label: 'Home', to: '/' },
-        { label: 'Color Detector', to: '/color-picker' },
-        { label: 'Palette Checker', to: '/palette-checker' },
-        { label: 'Color Blindness', to: '/simulator' },
-        { label: 'Traffic Signals', to: '/traffic-signal' },
+        { label: 'About', to: '/about' },
     ];
 
+    const toolPaths = TOOLS.map(t => t.to);
     const isActive = (path) => location.pathname === path;
+    const isToolActive = () => toolPaths.includes(location.pathname);
     const unreadCount = notifications.filter(n => !n.read).length;
 
     // Search functionality
@@ -111,6 +136,7 @@ const Header = () => {
     ];
 
     const handleSearch = (query) => {
+        if (!query) return;
         const lowerQuery = query.toLowerCase();
 
         // Navigate based on search query
@@ -136,7 +162,7 @@ const Header = () => {
             if (colorMatch) {
                 navigate(colorMatch.to);
             } else {
-                toast.error(`No results found for "${query}"`);
+                vaToast.error(`No results found for "${query}"`);
             }
         }
     };
@@ -172,7 +198,7 @@ const Header = () => {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation - Pill Island Design */}
+                    {/* Desktop Navigation - Pill Island + Tools Mega Menu */}
                     <nav className="hidden lg:flex items-center justify-center flex-shrink-0">
                         <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-full p-1.5 flex items-center shadow-2xl shadow-purple-500/5 ring-1 ring-black/5">
                             {navLinks.map((link) => (
@@ -187,13 +213,78 @@ const Header = () => {
                                     {isActive(link.to) && (
                                         <motion.div
                                             layoutId="nav-pill"
-                                            className="absolute inset-0 bg-blue-600 dark:bg-blue-600 rounded-full"
-                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                            className="absolute inset-0 bg-blue-600 rounded-full"
+                                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                         />
                                     )}
                                     <span className="relative z-10">{link.label}</span>
                                 </Link>
                             ))}
+
+                            {/* Tools dropdown */}
+                            <div className="relative" ref={toolsRef}>
+                                <button
+                                    onClick={() => setToolsOpen(!toolsOpen)}
+                                    className={`relative flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 ${isToolActive()
+                                        ? 'text-white shadow-md'
+                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                                        }`}
+                                >
+                                    {isToolActive() && (
+                                        <motion.div
+                                            layoutId="nav-pill"
+                                            className="absolute inset-0 bg-blue-600 rounded-full"
+                                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">Tools</span>
+                                    <motion.span
+                                        className="relative z-10"
+                                        animate={{ rotate: toolsOpen ? 180 : 0 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        <FaChevronDown className="w-2.5 h-2.5" />
+                                    </motion.span>
+                                </button>
+
+                                <AnimatePresence>
+                                    {toolsOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[640px] bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden z-50 p-3"
+                                        >
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-3 pb-2">All Tools</p>
+                                            <div className="grid grid-cols-3 gap-1">
+                                                {TOOLS.map((tool) => (
+                                                    <Link
+                                                        key={tool.to}
+                                                        to={tool.to}
+                                                        onClick={() => setToolsOpen(false)}
+                                                        className={`flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all group ${isActive(tool.to) ? 'bg-gray-50 dark:bg-white/5' : ''
+                                                            }`}
+                                                    >
+                                                        <div className={`w-9 h-9 rounded-xl ${tool.bg} ${tool.color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                                                            <tool.icon className="text-sm" />
+                                                        </div>
+                                                        <div>
+                                                            <p className={`text-sm font-bold ${isActive(tool.to) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                                                                {tool.label}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{tool.desc}</p>
+                                                        </div>
+                                                        {isActive(tool.to) && (
+                                                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
+                                                        )}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </nav>
 
@@ -387,7 +478,7 @@ const Header = () => {
 
                         {/* User Profile / Sign In */}
                         {currentUser ? (
-                            <div className="hidden md:flex items-center gap-3 ml-2 pl-3 border-l border-gray-200 dark:border-gray-800">
+                            <div className="flex items-center gap-3 ml-2 pl-0 md:pl-3 border-l-0 md:border-l border-gray-200 dark:border-gray-800">
                                 <div className="text-right hidden xl:block">
                                     <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
                                         {currentUser.displayName || 'User'}
@@ -417,13 +508,29 @@ const Header = () => {
                             </button>
                         )}
 
-                        {/* Mobile Menu Button */}
+                        {/* Mobile Menu Button - animated hamburger */}
                         <button
                             aria-label="Toggle mobile menu"
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             className="lg:hidden p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                         >
-                            {isMobileMenuOpen ? <FaTimes className="w-6 h-6" /> : <FaBars className="w-6 h-6" />}
+                            <motion.div
+                                animate={isMobileMenuOpen ? 'open' : 'closed'}
+                                className="w-6 h-5 flex flex-col justify-between"
+                            >
+                                <motion.span className="block h-0.5 bg-current rounded-full origin-left"
+                                    variants={{ open: { rotate: 45, y: -1 }, closed: { rotate: 0, y: 0 } }}
+                                    transition={{ duration: 0.25 }}
+                                />
+                                <motion.span className="block h-0.5 bg-current rounded-full"
+                                    variants={{ open: { opacity: 0, scaleX: 0 }, closed: { opacity: 1, scaleX: 1 } }}
+                                    transition={{ duration: 0.25 }}
+                                />
+                                <motion.span className="block h-0.5 bg-current rounded-full origin-left"
+                                    variants={{ open: { rotate: -45, y: 1 }, closed: { rotate: 0, y: 0 } }}
+                                    transition={{ duration: 0.25 }}
+                                />
+                            </motion.div>
                         </button>
                     </div>
                 </div>
@@ -451,6 +558,25 @@ const Header = () => {
                                         }`}
                                 >
                                     {link.label}
+                                </Link>
+                            ))}
+
+                            {/* All tools in mobile menu */}
+                            <p className="px-4 pt-3 pb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Tools</p>
+                            {TOOLS.map((tool) => (
+                                <Link
+                                    key={tool.to}
+                                    to={tool.to}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${isActive(tool.to)
+                                        ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'
+                                        }`}
+                                >
+                                    <div className={`w-7 h-7 rounded-lg ${tool.bg} ${tool.color} flex items-center justify-center flex-shrink-0 text-xs`}>
+                                        <tool.icon />
+                                    </div>
+                                    {tool.label}
                                 </Link>
                             ))}
 

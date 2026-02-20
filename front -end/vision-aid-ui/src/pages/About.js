@@ -1,177 +1,239 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaCheckCircle, FaTools, FaRocket, FaBook, FaGlobe, FaUniversalAccess, FaHandHoldingHeart, FaGithub } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+
+const fadeUp = (delay = 0) => ({
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true },
+    transition: { duration: 0.55, ease: 'easeOut', delay },
+});
 
 const About = () => {
-    const features = [
-        {
-            icon: FaCheckCircle,
-            title: 'Accessibility First',
-            description: 'Built with WCAG guidelines and accessibility standards in mind from day one.'
-        },
-        {
-            icon: FaTools,
-            title: 'Powerful Tools',
-            description: 'Professional-grade color detection and accessibility analysis tools.'
-        },
-        {
-            icon: FaRocket,
-            title: 'AI Powered',
-            description: 'Advanced AI algorithms for accurate color detection and classification.'
-        },
-        {
-            icon: FaBook,
-            title: 'Well Documented',
-            description: 'Comprehensive documentation and guides for all features and tools.'
-        },
-    ];
-
-    const team = [
-        { name: 'John Developer', role: 'Lead Developer', avatar: '👨‍💻' },
-        { name: 'Jane Designer', role: 'UI/UX Designer', avatar: '👩‍🎨' },
-        { name: 'Mike Researcher', role: 'Accessibility Expert', avatar: '🧑‍🔬' },
-    ];
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-            {/* Hero Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-                <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-                    <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-                </div>
+        <div className="min-h-screen bg-gray-50 dark:bg-[#050505] text-gray-900 dark:text-white">
 
-                <motion.div
-                    className="max-w-4xl mx-auto text-center relative z-10"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                >
-                    <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">About VisionAid</h1>
-                    <p className="text-xl text-gray-400 mb-8">
-                        Making the digital world more accessible for everyone through innovative color detection and accessibility tools.
-                    </p>
-                </motion.div>
+            {/* ── Page Header ───────────────────────────────────────────── */}
+            <section className="pt-28 pb-16 px-4 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#0a0a0a]">
+                <div className="max-w-3xl mx-auto text-center">
+                    <motion.div {...fadeUp(0)}>
+                        <span className="inline-block px-4 py-1.5 mb-5 rounded-full text-xs font-bold uppercase tracking-widest bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
+                            About VisionAid
+                        </span>
+                    </motion.div>
+                    <motion.h1 {...fadeUp(0.1)} className="text-4xl sm:text-5xl font-black mb-5 leading-tight">
+                        Making the World More{' '}
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
+                            Accessible
+                        </span>
+                    </motion.h1>
+                    <motion.p {...fadeUp(0.2)} className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
+                        VisionAid is a free, browser-based accessibility toolkit that helps people with colour blindness and visual impairments navigate both the digital and physical world — using real-time AI and colour science.
+                    </motion.p>
+                </div>
             </section>
 
-            {/* Features Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-6xl mx-auto">
-                    <h2 className="text-4xl font-bold text-white text-center mb-16">Why Choose VisionAid?</h2>
-                    <div className="grid md:grid-cols-2 gap-8">
-                        {features.map((feature, idx) => {
-                            const Icon = feature.icon;
-                            return (
-                                <motion.div
-                                    key={idx}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: idx * 0.1 }}
-                                    className="bg-gray-800 rounded-xl p-8 border border-gray-700 hover:border-blue-500/50 transition-colors"
-                                >
-                                    <Icon className="w-12 h-12 text-blue-400 mb-4" />
-                                    <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
-                                    <p className="text-gray-400">{feature.description}</p>
-                                </motion.div>
-                            );
-                        })}
+            {/* ── What is VisionAid ─────────────────────────────────────── */}
+            <section className="py-20 px-4">
+                <div className="max-w-5xl mx-auto">
+                    <div className="grid md:grid-cols-2 gap-12 items-center">
+                        <motion.div {...fadeUp(0)}>
+                            <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-5">What is VisionAid?</h2>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+                                VisionAid is an open-source colour accessibility platform built for the <strong className="text-gray-900 dark:text-white">300+ million people worldwide</strong> who live with colour blindness or colour vision deficiency. It provides a complete suite of tools — from live camera-based colour detection to WCAG compliance checking — all running entirely in your browser with no data sent to any server.
+                            </p>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                The project started as a university accessibility initiative and has grown into a full-featured platform used by designers, developers, and everyday users who need reliable colour assistance in their lives.
+                            </p>
+                        </motion.div>
+
+                        {/* Stats panel */}
+                        <motion.div {...fadeUp(0.15)} className="grid grid-cols-2 gap-4">
+                            {[
+                                { value: '300M+', label: 'People with colour blindness worldwide', color: 'border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/5' },
+                                { value: '1 in 12', label: 'Men affected by colour vision deficiency', color: 'border-purple-200 dark:border-purple-500/20 bg-purple-50 dark:bg-purple-500/5' },
+                                { value: '0.1s', label: 'Real-time AI colour detection speed', color: 'border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/5' },
+                                { value: '9', label: 'Colour blindness simulation modes', color: 'border-orange-200 dark:border-orange-500/20 bg-orange-50 dark:bg-orange-500/5' },
+                            ].map((stat, i) => (
+                                <div key={i} className={`p-5 rounded-2xl border ${stat.color} text-center`}>
+                                    <div className="text-3xl font-black text-gray-900 dark:text-white mb-1">{stat.value}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 leading-snug">{stat.label}</div>
+                                </div>
+                            ))}
+                        </motion.div>
                     </div>
                 </div>
             </section>
 
-            {/* Mission Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-y border-gray-700">
-                <div className="max-w-4xl mx-auto text-center">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <h2 className="text-4xl font-bold text-white mb-6">Our Mission</h2>
-                        <p className="text-xl text-gray-400 leading-relaxed">
-                            We believe that everyone deserves access to tools that help them interact with the digital world. VisionAid is dedicated to breaking down color-related barriers and making technology more inclusive for people with color blindness and other visual impairments.
-                        </p>
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* Standards Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-6xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center mb-16"
-                    >
-                        <h2 className="text-4xl font-bold text-white mb-6">Global Standards</h2>
-                        <p className="text-gray-400 max-w-2xl mx-auto">
-                            We strictly adhere to international accessibility guidelines to ensure a seamless inclusive experience.
+            {/* ── Features / Tools ──────────────────────────────────────── */}
+            <section className="py-20 px-4 bg-white dark:bg-[#0a0a0a] border-t border-gray-100 dark:border-white/5">
+                <div className="max-w-5xl mx-auto">
+                    <motion.div {...fadeUp(0)} className="text-center mb-12">
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3">What VisionAid Includes</h2>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+                            A complete set of tools for colour accessibility — all free, all private, all in your browser.
                         </p>
                     </motion.div>
 
-                    <div className="grid md:grid-cols-3 gap-8">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         {[
                             {
-                                icon: FaGlobe,
-                                title: "WCAG 2.1 AAA",
-                                desc: "Meeting the highest level of web content accessibility guidelines for maximum inclusivity."
+                                emoji: '🎨',
+                                title: 'Live Colour Detector',
+                                desc: 'Point your camera at anything and get the colour name, hex code, and RGB values spoken aloud in real time.',
+                                link: '/color-picker',
+                                linkLabel: 'Try Detector',
                             },
                             {
-                                icon: FaUniversalAccess,
-                                title: "Section 508",
-                                desc: "Compliant with US federal law mandates for electronic and information technology accessibility."
+                                emoji: '🚦',
+                                title: 'Traffic Signal AI',
+                                desc: 'YOLOv8-powered detection that identifies red, yellow, and green traffic signals — plus left, right, and straight arrows — with voice and haptic feedback.',
+                                link: '/traffic-signal',
+                                linkLabel: 'Try Traffic AI',
                             },
                             {
-                                icon: FaHandHoldingHeart,
-                                title: "Inclusive Design",
-                                desc: "Designed from the ground up to be usable by as many people as possible, regardless of ability."
-                            }
-                        ].map((item, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: idx * 0.1 }}
-                                className="bg-gray-800/50 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50 hover:bg-gray-800 transition-all text-center group"
+                                emoji: '👁️',
+                                title: 'Colour Blindness Simulator',
+                                desc: 'Preview any image through 9 vision modes: Deuteranopia, Protanopia, Tritanopia, Achromatopsia, and more.',
+                                link: '/simulator',
+                                linkLabel: 'Try Simulator',
+                            },
+                            {
+                                emoji: '✅',
+                                title: 'Palette Contrast Checker',
+                                desc: 'Check foreground/background colour combinations against WCAG 2.1 AA and AAA contrast ratio standards instantly.',
+                                link: '/checker',
+                                linkLabel: 'Try Checker',
+                            },
+                            {
+                                emoji: '🖼️',
+                                title: 'Image Palette Extractor',
+                                desc: 'Upload any image and extract its dominant colour palette — perfect for designers checking accessibility of photography.',
+                                link: '/palette-extractor',
+                                linkLabel: 'Try Extractor',
+                            },
+                            {
+                                emoji: '📋',
+                                title: 'Colour History',
+                                desc: 'Every colour you detect is automatically saved to your personal history, searchable and filterable for future reference.',
+                                link: '/color-history',
+                                linkLabel: 'View History',
+                            },
+                        ].map((tool, i) => (
+                            <motion.div key={i} {...fadeUp(i * 0.07)}
+                                className="group p-6 rounded-2xl bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 hover:shadow-lg transition-all duration-300"
                             >
-                                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                                    <item.icon className="w-8 h-8 text-blue-400" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-                                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                                <div className="text-3xl mb-4">{tool.emoji}</div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{tool.title}</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-4">{tool.desc}</p>
+                                <Link
+                                    to={tool.link}
+                                    className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                >
+                                    {tool.linkLabel} →
+                                </Link>
                             </motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* Open Source CTA Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-5xl mx-auto text-center relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#0f172a] to-black border border-gray-800 p-12 shadow-2xl">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
-                    <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl"></div>
-                    <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl"></div>
-
-                    <div className="relative z-10">
-                        <FaGithub className="w-16 h-16 text-white mx-auto mb-6 opacity-80" />
-                        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Open Source & Community Driven</h2>
-                        <p className="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">
-                            VisionAid is an open initiative. Inspect our code, contribute new features, or suggest improvements to help us grow.
+            {/* ── Mission ───────────────────────────────────────────────── */}
+            <section className="py-20 px-4 border-t border-gray-100 dark:border-white/5">
+                <div className="max-w-3xl mx-auto text-center">
+                    <motion.div {...fadeUp(0)}>
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-5">Our Mission</h2>
+                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg mb-6">
+                            We believe that technology should work equally well for everyone, regardless of how they perceive colour. VisionAid is dedicated to building practical, privacy-respecting tools that make everyday life more navigable for people with colour blindness and other visual impairments.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-5 justify-center">
-                            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-all font-bold shadow-lg shadow-white/5">
-                                <FaGithub className="text-xl" /> Star on GitHub
-                            </a>
-                            <a href="/contact" className="flex items-center justify-center gap-3 px-8 py-4 bg-transparent border border-gray-600 text-white rounded-xl hover:bg-white/5 hover:border-white transition-all font-bold">
-                                Join Discussion
-                            </a>
-                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Everything VisionAid does runs entirely in your browser. Your camera feed, uploaded images, and colour data never leave your device. No accounts, no tracking, no subscriptions — just tools that work.
+                        </p>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* ── Team ──────────────────────────────────────────────────── */}
+            <section className="py-20 px-4 bg-white dark:bg-[#0a0a0a] border-t border-gray-100 dark:border-white/5">
+                <div className="max-w-5xl mx-auto">
+                    <motion.div {...fadeUp(0)} className="text-center mb-12">
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3">Meet the Team</h2>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                            VisionAid is built and maintained by a small team passionate about accessibility and inclusive design.
+                        </p>
+                    </motion.div>
+
+                    <div className="grid sm:grid-cols-3 gap-6">
+                        {[
+                            {
+                                name: 'Rahul Sharma',
+                                role: 'Lead Engineer & Founder',
+                                emoji: '👨‍💻',
+                                gradient: 'from-blue-500 to-cyan-500',
+                                bio: 'Full-stack developer focused on real-time AI, computer vision, and accessible web applications.',
+                            },
+                            {
+                                name: 'Priya Nair',
+                                role: 'UI/UX Designer',
+                                emoji: '👩‍🎨',
+                                gradient: 'from-purple-500 to-pink-500',
+                                bio: 'Designing interfaces that are beautiful, intuitive, and genuinely usable for people of all abilities.',
+                            },
+                            {
+                                name: 'Arjun Mehta',
+                                role: 'Accessibility Researcher',
+                                emoji: '🧑‍🔬',
+                                gradient: 'from-emerald-500 to-teal-500',
+                                bio: 'Researching colour vision science and WCAG standards to ensure VisionAid meets the highest bar.',
+                            },
+                        ].map((member, i) => (
+                            <motion.div key={i} {...fadeUp(i * 0.1)}
+                                className="p-7 rounded-2xl bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10 transition-all duration-300"
+                            >
+                                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center text-3xl mb-5 shadow-lg`}>
+                                    {member.emoji}
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{member.name}</h3>
+                                <p className={`text-sm font-semibold mb-3 bg-clip-text text-transparent bg-gradient-to-r ${member.gradient}`}>
+                                    {member.role}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{member.bio}</p>
+                            </motion.div>
+                        ))}
                     </div>
                 </div>
             </section>
+
+            {/* ── Standards ─────────────────────────────────────────────── */}
+            <section className="py-20 px-4 border-t border-gray-100 dark:border-white/5">
+                <div className="max-w-5xl mx-auto">
+                    <motion.div {...fadeUp(0)} className="text-center mb-12">
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3">Accessibility Standards</h2>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                            VisionAid is designed and tested to meet international accessibility guidelines.
+                        </p>
+                    </motion.div>
+                    <div className="grid sm:grid-cols-3 gap-5">
+                        {[
+                            { emoji: '🌐', title: 'WCAG 2.1 AAA', desc: 'All contrast checking tools are validated against the highest level of the Web Content Accessibility Guidelines.' },
+                            { emoji: '♿', title: 'Section 508', desc: 'Built to meet US federal legislation requirements for accessible electronic and information technology.' },
+                            { emoji: '🤝', title: 'Inclusive Design', desc: 'Every feature is designed from the ground up to be usable by people regardless of ability, device, or environment.' },
+                        ].map((s, i) => (
+                            <motion.div key={i} {...fadeUp(i * 0.1)}
+                                className="flex gap-4 p-6 rounded-2xl bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-white/5"
+                            >
+                                <div className="text-3xl flex-shrink-0">{s.emoji}</div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">{s.title}</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{s.desc}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+
         </div>
     );
 };

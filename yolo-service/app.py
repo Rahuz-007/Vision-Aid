@@ -1,4 +1,5 @@
 # Optimized YOLO Service with GPU Support and Batch Processing
+# Model: YOLOv8s (small) — upgraded from nano for significantly better detection accuracy
 
 import io
 import os
@@ -8,7 +9,11 @@ import gc
 import time
 import hashlib
 from typing import Any, Dict, List, Tuple
-from collections import deque
+from collections import OrderedDict
+
+# Default model: yolov8s.pt — better accuracy than yolov8n.pt
+# Can override via YOLO_MODEL_PATH environment variable
+DEFAULT_MODEL = os.environ.get("YOLO_MODEL_PATH", "yolov8s.pt")
 import numpy as np
 
 from flask import Flask, jsonify, request
@@ -26,11 +31,10 @@ except ImportError:
 
 
 class ImageCache:
-    """Simple LRU cache for detection results"""
+    """O(1) LRU cache for detection results using OrderedDict"""
     def __init__(self, max_size=100):
-        self.cache = {}
+        self.cache = OrderedDict()
         self.max_size = max_size
-        self.access_order = deque()
     
     def get_hash(self, image_bytes):
         return hashlib.md5(image_bytes).hexdigest()
@@ -38,23 +42,21 @@ class ImageCache:
     def get(self, image_bytes):
         key = self.get_hash(image_bytes)
         if key in self.cache:
-            # Update access order
-            self.access_order.remove(key)
-            self.access_order.append(key)
+            # Move to end = mark as most recently used — O(1)
+            self.cache.move_to_end(key)
             print(f"Cache hit for {key[:8]}...")
             return self.cache[key]
         return None
     
     def set(self, image_bytes, result):
         key = self.get_hash(image_bytes)
-        
-        # Remove oldest if cache is full
-        if len(self.cache) >= self.max_size:
-            oldest = self.access_order.popleft()
-            del self.cache[oldest]
-        
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        else:
+            if len(self.cache) >= self.max_size:
+                # Remove LRU (first/oldest item) — O(1)
+                self.cache.popitem(last=False)
         self.cache[key] = result
-        self.access_order.append(key)
         print(f"Cached result for {key[:8]}...")
 
 
@@ -280,9 +282,9 @@ def calculate_distance(box: Dict[str, float]) -> float:
 app = Flask(__name__)
 CORS(app)
 
-# Initialize YOLO service
-print("Loading YOLO model...")
-yolo_service = OptimizedYOLOService(os.environ.get("YOLO_MODEL_PATH", "yolov8n.pt"))
+# Initialize YOLO service — using YOLOv8s (small) by default
+print(f"Loading YOLO model: {DEFAULT_MODEL} ...")
+yolo_service = OptimizedYOLOService(DEFAULT_MODEL)
 
 # Initialize color database
 color_db = load_color_database('colors.csv')
@@ -457,9 +459,24 @@ def detect_color() -> Any:
     return jsonify(result), 200
 
 
+@app.route("/model-info", methods=["GET"])
+def model_info() -> Any:
+    """Returns information about the loaded model"""
+    return jsonify({
+        "model": DEFAULT_MODEL,
+        "device": yolo_service.device,
+        "classes": len(yolo_service.model_names),
+        "torch_available": TORCH_AVAILABLE,
+        "cuda_available": TORCH_AVAILABLE and torch.cuda.is_available() if TORCH_AVAILABLE else False,
+        "color_db_size": len(color_db),
+        "cache_entries": len(image_cache.cache),
+    }), 200
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
     print(f"Starting YOLO service on port {port}")
+    print(f"Model: {DEFAULT_MODEL}")
     print(f"Device: {yolo_service.device}")
     print(f"Color database: {len(color_db)} colors")
     app.run(host="0.0.0.0", port=port, debug=False)

@@ -234,7 +234,7 @@ const ColorDetector = () => {
         // Final Name Logic: Show "Specific (General)"
         // If specific name is "Black" or identical, just show one.
         let finalName = specificName;
-        if (!specificName.toLowerCase().includes(simpleName.toLowerCase())) {
+        if (specificName && simpleName && !specificName.toLowerCase().includes(simpleName.toLowerCase())) {
             finalName = `${specificName} (${simpleName})`;
         }
 

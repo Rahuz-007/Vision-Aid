@@ -1,24 +1,34 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    // Check local storage or system preference
     const [isDarkMode, setIsDarkMode] = useState(() => {
         const savedTheme = localStorage.getItem('visionAidTheme');
+        // Default to dark mode if no preference saved
         return savedTheme ? savedTheme === 'dark' : true;
     });
 
+    // Apply theme class to <html> and persist preference
     useEffect(() => {
-        localStorage.setItem('visionAidTheme', isDarkMode ? 'dark' : 'light');
+        const root = document.documentElement;
         if (isDarkMode) {
-            document.documentElement.classList.add('dark');
+            root.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark');
+            root.classList.remove('dark');
         }
+        localStorage.setItem('visionAidTheme', isDarkMode ? 'dark' : 'light');
     }, [isDarkMode]);
 
-    const toggleTheme = () => setIsDarkMode(prev => !prev);
+    const toggleTheme = useCallback(() => {
+        // Add the transitioning class for a brief flash overlay
+        document.documentElement.classList.add('theme-transitioning');
+        setTimeout(() => {
+            document.documentElement.classList.remove('theme-transitioning');
+        }, 250);
+
+        setIsDarkMode(prev => !prev);
+    }, []);
 
     return (
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>

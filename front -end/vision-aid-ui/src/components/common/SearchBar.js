@@ -41,10 +41,10 @@ const SearchBar = ({
 
     // Handle search
     useEffect(() => {
-        if (query.trim()) {
+        if (query && query.trim()) {
             // Filter suggestions based on query
             const filtered = suggestions.filter(item =>
-                item.toLowerCase().includes(query.toLowerCase())
+                item && typeof item === 'string' && item.toLowerCase().includes(query.toLowerCase())
             );
             setResults(filtered);
             setSelectedIndex(0);

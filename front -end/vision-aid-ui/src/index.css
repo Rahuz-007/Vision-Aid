@@ -4,13 +4,41 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
 
+/* ─── CSS Custom Properties ─────────────────────────────────────────────────── */
 :root {
   --primary: #3B82F6;
   --secondary: #10B981;
   --dark: #1F2937;
   --light: #F3F4F6;
+
+  /* Light mode surface tokens */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F9FAFB;
+  --bg-surface: #F3F4F6;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --border-color: rgba(0, 0, 0, 0.08);
+
+  /* Scrollbar */
+  --sb-track: rgba(203, 213, 225, 0.4);
+  --sb-thumb: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  --sb-border: rgba(241, 245, 249, 0.5);
 }
 
+.dark {
+  --bg-primary: #050505;
+  --bg-secondary: #0a0a0a;
+  --bg-surface: #111111;
+  --text-primary: #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --border-color: rgba(255, 255, 255, 0.07);
+
+  --sb-track: rgba(51, 65, 85, 0.3);
+  --sb-thumb: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  --sb-border: rgba(15, 23, 42, 0.5);
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────────── */
 * {
   margin: 0;
   padding: 0;
@@ -21,45 +49,64 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ─── Body: respects both modes via Tailwind class strategy ──────────────────── */
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(to br, #0f172a, #1E293B, #0f172a);
-  color: #e2e8f0;
+  /* Background is driven by Tailwind bg-gray-50 / dark:bg-gray-950 on the root div */
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Vision Simulation Filters */
-/* Protanopia */
+/* ─── Scrollbar (both modes) ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sb-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #60a5fa, #a78bfa);
+  background-clip: padding-box;
+}
+
+/* ─── Vision Simulation Filters ──────────────────────────────────────────────── */
 body.vision-protanopia,
 .vision-protanopia {
   filter: url(#protanopia) !important;
 }
 
-/* Deuteranopia */
 body.vision-deuteranopia,
 .vision-deuteranopia {
   filter: url(#deuteranopia) !important;
 }
 
-/* Tritanopia */
 body.vision-tritanopia,
 .vision-tritanopia {
   filter: url(#tritanopia) !important;
 }
 
-/* Achromatopsia */
 body.vision-achromatopsia,
 .vision-achromatopsia {
   filter: url(#achromatopsia) !important;
 }
 
-
-/* High Contrast Mode */
+/* ─── High Contrast Mode ─────────────────────────────────────────────────────── */
 .high-contrast body {
   background: #000000 !important;
   color: #ffffff !important;
@@ -86,31 +133,12 @@ body.vision-achromatopsia,
   background-color: #333 !important;
 }
 
+/* ─── Typography ─────────────────────────────────────────────────────────────── */
 code {
   font-family: 'Space Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-/* Custom Scrollbar - Modern Dark Style */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(51, 65, 85, 0.3);
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
-  border-radius: 10px;
-  border: 3px solid rgba(15, 23, 42, 0.5);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #60a5fa, #a78bfa);
-}
-
-/* Animations */
+/* ─── Global Animations ──────────────────────────────────────────────────────── */
 @keyframes blob {
 
   0%,
@@ -161,6 +189,77 @@ code {
   }
 }
 
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes gradient-x {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-gradient {
+  0% {
+    background-position: 200% center;
+  }
+
+  100% {
+    background-position: -200% center;
+  }
+}
+
+@keyframes theme-flash {
+  0% {
+    opacity: 0.15;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────────────────── */
 .animate-blob {
   animation: blob 7s infinite;
 }
@@ -187,14 +286,55 @@ code {
   animation: glow 2s ease-in-out infinite;
 }
 
-/* Glass morphism effect */
-.glass {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+  background-size: 200% auto;
 }
 
-/* Gradient text */
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  min-width: 100%;
+}
+
+/* ─── Skeleton loader ────────────────────────────────────────────────────────── */
+.skeleton {
+  animation: pulse-gradient 1.5s infinite;
+  background-size: 200% 100%;
+}
+
+/* Light skeleton */
+.skeleton {
+  background-image: linear-gradient(90deg,
+      rgba(0, 0, 0, 0.04),
+      rgba(0, 0, 0, 0.08),
+      rgba(0, 0, 0, 0.04));
+}
+
+/* Dark skeleton */
+.dark .skeleton {
+  background-image: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.10),
+      rgba(255, 255, 255, 0.04));
+}
+
+/* ─── Glass morphism ─────────────────────────────────────────────────────────── */
+.glass {
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+}
+
+/* Light glass */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Dark glass */
+.dark .glass {
+  background: rgba(15, 20, 40, 0.7);
+}
+
+/* ─── Gradient text utility ──────────────────────────────────────────────────── */
 .gradient-text {
   background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
   background-size: 300% 300%;
@@ -204,102 +344,30 @@ code {
   animation: gradient-shift 3s ease infinite;
 }
 
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
+/* ─── Theme-transition flash overlay ─────────────────────────────────────────── */
+/* Prevents jarring flash when switching; applied via JS in ThemeContext */
+.theme-transitioning::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: white;
+  animation: theme-flash 220ms ease-out forwards;
+  pointer-events: none;
+  z-index: 99999;
 }
 
-/* NEW: Horizontal Gradient Animation for long text */
-@keyframes gradient-x {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
+.dark .theme-transitioning::after {
+  background: #050505;
 }
 
-.animate-gradient-x {
-  animation: gradient-x 3s ease infinite;
-  background-size: 200% auto;
-}
-
-/* Ticker Marquee Animation */
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-marquee {
-  animation: marquee 20s linear infinite;
-  min-width: 100%;
-}
-
-/* Smooth transitions */
-button,
-a,
-div[role="button"] {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Page transitions enhancement */
-main {
-  animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Loading skeleton */
-@keyframes pulse-gradient {
-  0% {
-    background-position: 200% center;
-  }
-
-  100% {
-    background-position: -200% center;
-  }
-}
-
-.skeleton {
-  animation: pulse-gradient 1.5s infinite;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  background-size: 200% 100%;
-}
-
-/* Input styles */
+/* ─── Input base styles (light + dark) ──────────────────────────────────────── */
 input,
 textarea,
 select {
   transition: all 0.3s ease;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 
 input:focus,
@@ -307,11 +375,39 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
-/* Selection color */
+/* ─── Selection ──────────────────────────────────────────────────────────────── */
 ::selection {
-  background-color: rgba(59, 130, 246, 0.5);
+  background-color: rgba(59, 130, 246, 0.4);
   color: white;
+}
+
+/* ─── Page transitions ───────────────────────────────────────────────────────── */
+main {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* ─── Smooth all theme-related transitions ───────────────────────────────────── */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* But don't override explicit durations set inline/via Tailwind */
+[class*="transition-"],
+[class*="duration-"],
+[style*="transition"] {
+  transition: unset;
+}
+
+/* Restore motion element transitions (framer-motion) */
+[data-framer-component-type],
+.motion-div,
+motion {
+  transition: unset !important;
 }

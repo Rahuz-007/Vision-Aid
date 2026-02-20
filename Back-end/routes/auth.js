@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const { validate, registerSchema, loginSchema } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
-const logger = require('../config/logger');
+const { logger } = require('../config/logger');
 const passport = require('passport');
 const { admin } = require('../services/firebase');
 
