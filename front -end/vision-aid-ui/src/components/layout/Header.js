@@ -438,22 +438,6 @@ const Header = () => {
                                                 <FaQuestionCircle className="text-gray-400 w-4 h-4" /> Help Center
                                             </button>
 
-                                            {/* Saved Colors */}
-                                            <button
-                                                onClick={() => {
-                                                    setSettingsOpen(false);
-                                                    navigate('/color-history');
-                                                }}
-                                                className="w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
-                                            >
-                                                <FaPalette className="text-purple-500 w-4 h-4" />
-                                                <span>Saved Colors</span>
-                                                {colorHistory.length > 0 && (
-                                                    <span className="ml-auto px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs font-bold rounded-full">
-                                                        {colorHistory.length}
-                                                    </span>
-                                                )}
-                                            </button>
 
                                             <div className="h-px bg-gray-100 dark:bg-gray-800 my-1 mx-2"></div>
 

@@ -1,12 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaVolumeUp, FaAdjust, FaFont, FaPalette, FaTags, FaVolumeDown, FaMobileAlt, FaMoon } from 'react-icons/fa';
+import { FaTimes, FaVolumeUp, FaAdjust, FaFont, FaPalette, FaTags, FaVolumeDown, FaMobileAlt } from 'react-icons/fa';
 import { useSettings } from '../../context/SettingsContext';
-import { useTheme } from '../../context/ThemeContext';
 
 const SettingsModal = ({ isOpen, onClose }) => {
     const { settings, updateSetting } = useSettings();
-    const { isDarkMode, toggleTheme } = useTheme();
 
     if (!isOpen) return null;
 
@@ -43,14 +41,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
         {
             title: 'APPEARANCE',
             items: [
-                {
-                    icon: <FaMoon className="text-purple-400" />,
-                    label: 'Dark Mode',
-                    desc: 'Switch between dark and light themes',
-                    type: 'toggle',
-                    value: isDarkMode,
-                    onChange: toggleTheme
-                },
                 {
                     icon: <FaPalette className="text-pink-400" />,
                     label: 'Color Format',
