@@ -19,6 +19,7 @@ import ScrollProgressBar from './components/common/ScrollProgressBar';
 import VisionOnboardingModal from './components/auth/VisionOnboardingModal';
 import VisionFilters from './components/common/VisionFilters';
 import ScrollToTop from './components/common/ScrollToTop';
+import MobileBottomNav from './components/layout/MobileBottomNav';
 
 // Lazy-loaded feature pages — each paired with its content-shaped skeleton
 const Simulator = React.lazy(() => import('./components/features/ColorBlindnessSimulator/ColorBlindnessSimulator'));
@@ -60,7 +61,7 @@ function AnimatedRoutes({ showConfigWarning, setShowConfigWarning }) {
                 </div>
             )}
             <Header />
-            <div className="flex-grow">
+            <div className="flex-grow hide-on-mobile-nav">
                 <AnimatePresence mode="wait" initial={false}>
                     <Routes location={location} key={location.pathname}>
                         <Route path="/" element={<PageTransition><Home /></PageTransition>} />
@@ -112,6 +113,7 @@ function AnimatedRoutes({ showConfigWarning, setShowConfigWarning }) {
                     </Routes>
                 </AnimatePresence>
             </div>
+            <MobileBottomNav />
             <Footer />
         </>
     );

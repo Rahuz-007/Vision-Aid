@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 import {
     FaTimes, FaUser, FaEnvelope, FaSignOutAlt, FaEye,
     FaCalendarAlt, FaPalette, FaFire, FaStar, FaCamera, FaTrash, FaSpinner,
@@ -13,33 +13,27 @@ import { useColorHistory } from '../../context/ColorHistoryContext';
 import { storage, auth } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile, sendPasswordResetEmail } from 'firebase/auth';
-import toast from 'react-hot-toast';
+import vaToast from '../../utils/toast';
 import Papa from 'papaparse';
 
 // Animated Stat Card Component
-const AnimatedStatCard = ({ stat, index }) => {
-    const [count, setCount] = useState(0);
+const AnimatedStatCard = React.memo(({ stat, index }) => {
+    const countRef = useRef(null);
     const isNumber = typeof stat.value === 'number';
 
     useEffect(() => {
-        if (!isNumber) return;
+        if (!isNumber || !countRef.current) return;
 
-        let start = 0;
-        const end = stat.value;
-        const duration = 1000;
-        const increment = end / (duration / 16);
-
-        const timer = setInterval(() => {
-            start += increment;
-            if (start >= end) {
-                setCount(end);
-                clearInterval(timer);
-            } else {
-                setCount(Math.floor(start));
+        const node = countRef.current;
+        const controls = animate(0, stat.value, {
+            duration: 1.5,
+            ease: "easeOut",
+            onUpdate: (value) => {
+                node.textContent = Math.round(value);
             }
-        }, 16);
+        });
 
-        return () => clearInterval(timer);
+        return () => controls.stop();
     }, [stat.value, isNumber]);
 
     const getColorClasses = (color) => {
@@ -66,51 +60,37 @@ const AnimatedStatCard = ({ stat, index }) => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.05 }}
             whileHover={{ y: -4, scale: 1.02 }}
             className="bg-gradient-to-br from-white to-gray-50 dark:from-white/5 dark:to-white/[0.02] rounded-2xl p-4 flex flex-col items-center justify-center text-center border border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 transition-all shadow-sm hover:shadow-lg relative overflow-hidden group"
         >
-            {/* Animated background gradient */}
-            <motion.div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            {/* Background shimmer */}
+            <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
                 style={{
                     background: `radial-gradient(circle at 50% 50%, ${getGradientColor(stat.color)}, transparent 70%)`
                 }}
             />
 
-            {/* Icon with pulse animation */}
-            <motion.div
-                animate={{
-                    scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-            >
-                <stat.icon className={`${getColorClasses(stat.color)} text-xl mb-2 relative z-10`} />
-            </motion.div>
+            {/* Icon */}
+            <div className={`${getColorClasses(stat.color)} text-xl mb-2 relative z-10`}>
+                <stat.icon />
+            </div>
 
-            {/* Animated value */}
-            <motion.span
-                className={`text-2xl font-black text-gray-900 dark:text-white relative z-10 ${stat.truncate ? 'w-full truncate px-1 text-lg' : ''
-                    }`}
-                key={count}
+            {/* Value (Direct DOM Update) */}
+            <span
+                ref={countRef}
+                className={`text-2xl font-black text-gray-900 dark:text-white relative z-10 ${stat.truncate ? 'w-full truncate px-1 text-lg' : ''}`}
             >
-                {isNumber ? count : stat.value}
-            </motion.span>
+                {isNumber ? 0 : stat.value}
+            </span>
 
             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider relative z-10">
                 {stat.label}
             </span>
-
-            {/* Shine effect on hover */}
-            <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                initial={{ x: '-100%' }}
-                whileHover={{ x: '100%' }}
-                transition={{ duration: 0.6 }}
-            />
         </motion.div>
     );
-};
+});
 
 // Profile Completion Ring Component
 const ProfileCompletionRing = ({ currentUser, stats }) => {
@@ -280,21 +260,48 @@ const ProfileModal = ({ isOpen, onClose }) => {
     // Check if user is signed in via Google
     const isGoogleUser = currentUser?.providerData?.some(p => p.providerId === 'google.com');
 
+    // Compress an image File to a Base64 data URL ≤ maxBytes
+    const compressToDataURL = (file, maxBytes = 150 * 1024) =>
+        new Promise((resolve, reject) => {
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+                // Cap at 256×256 for avatars
+                const MAX = 256;
+                if (width > MAX || height > MAX) {
+                    const ratio = Math.min(MAX / width, MAX / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                // Iteratively reduce quality until small enough
+                let quality = 0.85;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                while (dataUrl.length > maxBytes * 1.37 && quality > 0.2) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+            img.src = objectUrl;
+        });
+
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            toast.error('Please upload an image file');
+            vaToast.error('Please upload an image file');
             return;
         }
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('Image size must be less than 5MB');
-            return;
-        }
-
-        if (!storage) {
-            toast.error("Storage is not configured. Check your .env setup.");
+        if (file.size > 10 * 1024 * 1024) {
+            vaToast.error('Image size must be less than 10MB');
             return;
         }
 
@@ -303,26 +310,48 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
         try {
             setUploading(true);
-            const fileRef = ref(storage, `profile_photos/${currentUser.uid}/${Date.now()}_${file.name}`);
-            await uploadWithTimeout(uploadBytes(fileRef, file), 60000);
+            let photoURL;
+            let uploadedToCloud = false;
 
-            if (fileInputRef.current.dataset.uploadId != uploadId) return;
+            // 1. Try Firebase Storage if configured
+            if (storage) {
+                try {
+                    const fileRef = ref(storage, `profile_photos/${currentUser.uid}/${Date.now()}_${file.name}`);
+                    await uploadWithTimeout(uploadBytes(fileRef, file), 60000);
 
-            const photoURL = await getDownloadURL(fileRef);
+                    // Check if cancelled during upload
+                    if (fileInputRef.current.dataset.uploadId != uploadId) return;
+
+                    photoURL = await getDownloadURL(fileRef);
+                    uploadedToCloud = true;
+                } catch (storageError) {
+                    console.warn("Storage upload failed (likely plan/permissions), using fallback:", storageError);
+                    // Explicitly continue to fallback below
+                    uploadedToCloud = false;
+                }
+            }
+
+            // 2. Fallback: Compress to Base64 (Local/Email users or if Cloud failed)
+            if (!uploadedToCloud) {
+                photoURL = await compressToDataURL(file);
+                if (fileInputRef.current.dataset.uploadId != uploadId) return;
+
+                try {
+                    localStorage.setItem(`va_avatar_${currentUser.uid}`, photoURL);
+                } catch (storageErr) {
+                    console.warn('localStorage full, avatar not persisted:', storageErr);
+                }
+            }
+
             await updateProfile(auth.currentUser, { photoURL });
-
             try { await refreshProfile(); } catch (e) { console.warn(e); }
 
             setUploading(false);
-            toast.success('Profile photo updated!');
+            vaToast.success('Profile photo updated!');
         } catch (error) {
-            console.error("Upload Error:", error);
+            console.error('Upload Error:', error);
             setUploading(false);
-            if (error.message === 'Request timed out') {
-                toast.error('Upload timed out. Check connection.');
-            } else {
-                toast.error('Failed to update photo. ' + (error.message || 'Error'));
-            }
+            vaToast.error('Failed to update photo. ' + (error.message || 'Unknown error'));
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
@@ -334,7 +363,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
             fileInputRef.current.dataset.uploadId = '';
             fileInputRef.current.value = '';
         }
-        toast('Upload cancelled');
+        vaToast.info('Upload cancelled');
     };
 
     const handleDeletePhoto = async () => {
@@ -346,48 +375,50 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
         try {
             setUploading(true);
-            await updateProfile(auth.currentUser, { photoURL: "" });
+            await updateProfile(auth.currentUser, { photoURL: '' });
+            // Also clear the localStorage fallback avatar
+            try { localStorage.removeItem(`va_avatar_${currentUser.uid}`); } catch (_) { }
             await refreshProfile();
             setUploading(false);
-            toast.success('Profile photo removed');
+            vaToast.success('Profile photo removed');
         } catch (error) {
             setUploading(false);
-            toast.error('Failed to remove photo');
+            vaToast.error('Failed to remove photo');
         }
     };
 
     const triggerFileInput = () => fileInputRef.current?.click();
 
     const handleSaveName = async () => {
-        if (!newName.trim()) return toast.error("Name cannot be empty");
+        if (!newName.trim()) { vaToast.error('Name cannot be empty'); return; }
         try {
             await updateProfile(auth.currentUser, { displayName: newName });
             await refreshProfile();
             setIsEditingName(false);
-            toast.success("Name updated successfully");
+            vaToast.success('Name updated successfully');
         } catch (error) {
-            toast.error("Failed to update name");
+            vaToast.error('Failed to update name');
         }
     };
 
     const handleExportData = () => {
-        if (history.length === 0) return toast("No data to export");
+        if (history.length === 0) { vaToast.info('No data to export yet'); return; }
         const csv = Papa.unparse(history);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `vision_aid_data_${new Date().toISOString().slice(0, 10)}.csv`;
         link.click();
-        toast.success("Data exported successfully");
+        vaToast.success('Data exported successfully');
     };
 
     const handlePasswordReset = async () => {
-        if (isGoogleUser) return toast.error("Please change your password via Google Account settings.");
+        if (isGoogleUser) { vaToast.error('Please change your password via Google Account settings.'); return; }
         try {
             await sendPasswordResetEmail(auth, currentUser.email);
-            toast.success("Password reset email sent!");
+            vaToast.success('Password reset email sent!');
         } catch (error) {
-            toast.error("Failed to send reset email: " + error.message);
+            vaToast.error('Failed to send reset email: ' + error.message);
         }
     };
 
@@ -396,11 +427,12 @@ const ProfileModal = ({ isOpen, onClose }) => {
     return ReactDOM.createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        transition={{ duration: 0.2 }}
                         className="relative w-full max-w-2xl bg-white dark:bg-[#0f172a] rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]"
                     >
                         {/* Header Actions */}
@@ -419,69 +451,33 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
                                 {/* Profile Header Section (Clean & Minimal) */}
                                 <div className="flex flex-col items-center mb-8">
-                                    {/* Avatar Glow Effect */}
-                                    <motion.div
-                                        className="relative group mb-4"
-                                        whileHover={{ scale: 1.05 }}
-                                        transition={{ type: 'spring', stiffness: 300 }}
-                                    >
-                                        {/* Animated gradient ring */}
-                                        <motion.div
-                                            className="absolute -inset-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                            style={{
-                                                background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6)',
-                                                backgroundSize: '300% 100%'
-                                            }}
-                                            animate={{
-                                                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                                            }}
-                                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                                    {/* Avatar Container */}
+                                    <div className="relative group mb-4">
+                                        {/* Static Gradient Ring (Only visible on hover) */}
+                                        <div
+                                            className="absolute -inset-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
                                         />
 
-                                        {/* Pulsing glow */}
-                                        <motion.div
-                                            className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full"
-                                            animate={{
-                                                scale: [1, 1.2, 1],
-                                                opacity: [0.3, 0.6, 0.3]
-                                            }}
-                                            transition={{ duration: 2, repeat: Infinity }}
-                                        />
+                                        {/* Static Glow (Only visible on hover) */}
+                                        <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                                         <div className="w-28 h-28 rounded-full border-4 border-white dark:border-[#1e293b] shadow-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden relative z-10">
                                             {uploading ? (
                                                 <div className="flex flex-col items-center gap-2">
-                                                    {/* Enhanced loading spinner */}
-                                                    <div className="relative w-12 h-12">
-                                                        <motion.div
-                                                            className="absolute inset-0 rounded-full border-4 border-blue-500/20"
-                                                            animate={{ rotate: 360 }}
-                                                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                                                        />
-                                                        <motion.div
-                                                            className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500"
-                                                            animate={{ rotate: 360 }}
-                                                            transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-                                                        />
-                                                    </div>
-                                                    <motion.button
+                                                    <FaSpinner className="animate-spin text-blue-500 text-2xl" />
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); handleCancelUpload(); }}
-                                                        className="text-[10px] bg-red-500 text-white px-3 py-1 rounded-full shadow-lg"
-                                                        whileHover={{ scale: 1.1 }}
-                                                        whileTap={{ scale: 0.9 }}
+                                                        className="text-[10px] bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-600 transition-colors"
                                                     >
                                                         Cancel
-                                                    </motion.button>
+                                                    </button>
                                                 </div>
                                             ) : (
                                                 currentUser.photoURL ? (
-                                                    <motion.img
+                                                    <img
                                                         src={currentUser.photoURL}
                                                         alt="Profile"
-                                                        className="w-full h-full object-cover"
-                                                        initial={{ scale: 0.8, opacity: 0 }}
-                                                        animate={{ scale: 1, opacity: 1 }}
-                                                        transition={{ duration: 0.3 }}
+                                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                     />
                                                 ) : (
                                                     <div className="text-4xl font-bold text-gray-400">
@@ -491,35 +487,30 @@ const ProfileModal = ({ isOpen, onClose }) => {
                                             )}
                                         </div>
 
-                                        {/* Enhanced camera button */}
+                                        {/* Camera Button */}
                                         {!uploading && (
-                                            <motion.button
+                                            <button
                                                 onClick={triggerFileInput}
-                                                className="absolute bottom-1 right-1 p-2.5 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-full shadow-xl border-2 border-white dark:border-gray-900"
+                                                className="absolute bottom-1 right-1 p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-lg border-2 border-white dark:border-gray-900 transition-transform hover:scale-110 active:scale-95 z-20"
                                                 title="Change Photo"
-                                                whileHover={{ scale: 1.15, rotate: 15 }}
-                                                whileTap={{ scale: 0.95 }}
                                             >
                                                 <FaCamera size={14} />
-                                            </motion.button>
+                                            </button>
                                         )}
 
-                                        {/* Delete photo button (only if photo exists) */}
+                                        {/* Delete Button */}
                                         {!uploading && currentUser.photoURL && (
-                                            <motion.button
+                                            <button
                                                 onClick={handleDeletePhoto}
-                                                className="absolute bottom-1 left-1 p-2 bg-red-500 text-white rounded-full shadow-xl border-2 border-white dark:border-gray-900 opacity-0 group-hover:opacity-100"
+                                                className="absolute bottom-1 left-1 p-2 bg-red-500 hover:bg-red-400 text-white rounded-full shadow-lg border-2 border-white dark:border-gray-900 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95 z-20"
                                                 title="Remove Photo"
-                                                whileHover={{ scale: 1.15 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                initial={{ opacity: 0 }}
                                             >
                                                 <FaTrash size={12} />
-                                            </motion.button>
+                                            </button>
                                         )}
 
                                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                                    </motion.div>
+                                    </div>
 
                                     {/* Name & Title */}
                                     <div className="text-center w-full">
@@ -709,7 +700,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                                             <button
                                                 onClick={() => {
                                                     if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                                                        toast.error("Please contact support to delete your account permanently.");
+                                                        vaToast.error("Please contact support to delete your account permanently.");
                                                     }
                                                 }}
                                                 className="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-xs font-bold uppercase tracking-wide opacity-70 hover:opacity-100"

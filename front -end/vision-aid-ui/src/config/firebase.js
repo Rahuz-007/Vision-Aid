@@ -35,7 +35,9 @@ if (isConfigValid) {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
-        storage = getStorage(app);
+        if (firebaseConfig.storageBucket) {
+            storage = getStorage(app);
+        }
 
         // Set persistence to local (keeps user logged in after refresh)
         setPersistence(auth, browserLocalPersistence).catch((error) => {

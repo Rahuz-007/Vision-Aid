@@ -1,17 +1,40 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
 
+// Cinematic page transition — slide up + fade with subtle scale
 const pageVariants = {
-    initial: { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] } },
-    exit: { opacity: 0, y: -8, transition: { duration: 0.18, ease: 'easeIn' } },
+    initial: {
+        opacity: 0,
+        y: 20,
+        scale: 0.98,
+        filter: 'blur(4px)',
+    },
+    animate: {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        filter: 'blur(0px)',
+        transition: {
+            duration: 0.38,
+            ease: [0.22, 1, 0.36, 1],  // custom spring-like ease
+        },
+    },
+    exit: {
+        opacity: 0,
+        y: -12,
+        scale: 0.99,
+        filter: 'blur(2px)',
+        transition: {
+            duration: 0.22,
+            ease: 'easeIn',
+        },
+    },
 };
 
 /**
- * Wrap the <Routes> block with AnimatePresence and each route's element 
- * with <PageTransition>. The key={location.pathname} on AnimatePresence
- * re-mounts on every navigation, triggering the animation.
+ * PageTransition — wraps each route's content.
+ * Use with AnimatePresence on the parent <Routes>.
+ * Provides a premium blur + slide + fade effect on navigation.
  */
 const PageTransition = ({ children }) => (
     <motion.div
@@ -19,7 +42,7 @@ const PageTransition = ({ children }) => (
         initial="initial"
         animate="animate"
         exit="exit"
-        style={{ minHeight: '100%' }}
+        style={{ minHeight: '100%', transformOrigin: 'top center' }}
     >
         {children}
     </motion.div>

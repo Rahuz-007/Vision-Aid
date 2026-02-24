@@ -1,0 +1,130 @@
+﻿node.exe : (node:21872) [DEP0176] 
+DeprecationWarning: fs.F_OK is deprecated, use 
+fs.constants.F_OK instead
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:2 
+   1872) [D...ts.F_OK instead:String) [], RemoteExc  
+  eption
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where 
+the warning was created)
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src\components\auth\ProfileModal.js
+  Line 5:48:    'FaEye' is defined but never used        no-unused-vars
+  Line 7:20:    'FaShieldAlt' is defined but never used  no-unused-vars
+  Line 323:63:  Expected '!==' and instead saw '!='      eqeqeq
+  Line 337:59:  Expected '!==' and instead saw '!='      eqeqeq
+
+src\components\common\CameraPermissionGuide.js
+  Line 3:99:   'FaDesktop' is defined but never used          no-unused-vars
+  Line 16:11:  'isMobile' is assigned a value but never used  no-unused-vars
+
+src\components\common\CommandPalette.js
+  Line 8:5:  'FaCog' is defined but never used  no-unused-vars
+
+src\components\features\ColorBlindnessSimulator\ColorBlindnessSimulator.js
+  Line 22:13:  'currentUser' is assigned a value but never used                                                                                            no-unused-vars
+  Line 46:8:   React Hook useEffect has a missing dependency: 'selectedMode.id'. Either include it or remove the dependency array                          react-hooks/exhaustive-deps
+  Line 99:8:   React Hook useEffect has missing dependencies: 'handleMouseMove' and 'handleTouchMove'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 160:8:  React Hook useEffect has a missing dependency: 'stopCamera'. Either include it or remove the dependency array                               react-hooks/exhaustive-deps
+
+src\components\features\ColorPicker\ColorPicker.js
+  Line 4:5:     'FaCamera' is defined but never used                                                                             no-unused-vars
+  Line 4:37:    'FaStop' is defined but never used                                                                               no-unused-vars
+  Line 5:5:     'FaPlay' is defined but never used                                                                               no-unused-vars
+  Line 5:13:    'FaHandPaper' is defined but never used                                                                          no-unused-vars
+  Line 6:5:     'FaEye' is defined but never used                                                                                no-unused-vars
+  Line 6:49:    'FaSpinner' is defined but never used                                                                            no-unused-vars
+  Line 6:60:    'FaMicrochip' is defined but never used                                                                          no-unused-vars
+  Line 7:13:    'FaHashtag' is defined but never used                                                                            no-unused-vars
+  Line 7:24:    'FaAdjust' is defined but never used                                                                             no-unused-vars
+  Line 7:34:    'FaExchangeAlt' is defined but never used                                                                        no-unused-vars
+  Line 11:8:    'EmptyState' is defined but never used                                                                           no-unused-vars
+  Line 101:13:  Expected a default case                                                                                          default-case
+  Line 137:17:  'finalL' is already defined                                                                                      no-redeclare
+  Line 137:29:  'finalM' is already defined                                                                                      no-redeclare
+  Line 137:42:  'finalS' is already defined                                                                                      no-redeclare
+  Line 141:17:  'finalL' is already defined                                                                                      no-redeclare
+  Line 141:29:  'finalM' is already defined                                                                                      no-redeclare
+  Line 141:41:  'finalS' is already defined                                                                                      no-redeclare
+  Line 186:26:  'setVoiceEnabled' is assigned a value but never used                                                             no-unused-vars
+  Line 211:15:  'isExactMatch' is assigned a value but never used                                                                no-unused-vars
+  Line 244:15:  'descriptiveName' is assigned a value but never used                                                             no-unused-vars
+  Line 295:16:  'h1' is assigned a value but never used                                                                          no-unused-vars
+  Line 296:16:  'h2' is assigned a value but never used                                                                          no-unused-vars
+  Line 500:8:   React Hook useEffect has a missing dependency: 'analyzeColor'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src\components\features\PaletteChecker\PaletteChecker.js
+  Line 9:13:    'currentUser' is assigned a value but never used  no-unused-vars
+  Line 173:13:  Expected a default case                           default-case
+
+src\components\features\TrafficSignalDetector\TrafficSignalDetector.js
+  Line 2:29:    'FaInfoCircle' is defined but never used                                                                                                                                          no-unused-vars
+  Line 2:148:   'FaBell' is defined but never used                                                                                                                                                no-unused-vars
+  Line 6:8:     'EmptyState' is defined but never used                                                                                                                                            no-unused-vars
+  Line 44:10:   'showSettings' is assigned a value but never used                                                                                                                                 no-unused-vars
+  Line 44:24:   'setShowSettings' is assigned a value but never used                                                                                                                              no-unused-vars
+  Line 525:7:   Expected a default case                                                                                                                                                           default-case
+  Line 597:11:  'processWidth' is assigned a value but never used                                                                                                                                 no-unused-vars
+  Line 598:11:  'processHeight' is assigned a value but never used                                                                                                                                no-unused-vars
+  Line 796:6:   React Hook useCallback has missing dependencies: 'arrowDirection', 'detectArrowDirection', 'detectWithAI', and 'isAiEnabled'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+src\components\layout\Footer.js
+  Line 3:55:  'FaHeart' is defined but never used  no-unused-vars
+
+src\components\layout\Header.js
+  Line 12:5:   'FaBars' is defined but never used   no-unused-vars
+  Line 12:13:  'FaTimes' is defined but never used  no-unused-vars
+
+src\components\layout\HelpCenterModal.js
+  Line 4:32:  'FaVideo' is defined but never used     no-unused-vars
+  Line 5:5:   'FaKeyboard' is defined but never used  no-unused-vars
+
+src\components\pages\ColorHistory\ColorHistory.js
+  Line 7:5:  'FaFilter' is defined but never used  no-unused-vars
+
+src\utils\microInteractions.js
+  Line 428:1:  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  305.38 kB  build\static\js\main.ca934002.js
+  17.24 kB   build\static\css\main.9c2e24ec.css
+  11.84 kB   build\static\js\767.7270f953.chunk.js
+  10.37 kB   build\static\js\304.fbeaf27f.chunk.js
+  4.92 kB    build\static\js\443.87b93c33.chunk.js
+  4.77 kB    build\static\js\471.2fb4ed09.chunk.js
+  4.5 kB     build\static\js\305.314c1782.chunk.js
+  3.97 kB    build\static\js\387.02b24701.chunk.js
+  3.58 kB    build\static\js\219.2d939aa2.chunk.js
+  3.5 kB     build\static\js\642.8f2d8598.chunk.js
+  3.24 kB    build\static\js\179.b5b9ce99.chunk.js
+  3.05 kB    build\static\js\211.fcb5a7f4.chunk.js
+  2.45 kB    build\static\js\821.4f9dd7da.chunk.js
+  1.94 kB    build\static\js\327.72242a2d.chunk.js
+  1.72 kB    build\static\js\206.7bb82032.chunk.js
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

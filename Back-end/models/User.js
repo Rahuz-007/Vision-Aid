@@ -1,6 +1,7 @@
 const { db } = require('../services/firebase');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 class User {
     static collectionName = 'users';
@@ -15,6 +16,8 @@ class User {
         this.verificationExpires = data.verificationExpires;
         this.resetToken = data.resetToken;
         this.resetExpires = data.resetExpires;
+        this.refreshToken = data.refreshToken;
+        this.firebaseUid = data.firebaseUid;
         this.avatar = data.avatar;
         this.googleId = data.googleId;
         this.githubId = data.githubId;
@@ -148,16 +151,80 @@ class User {
     }
 
     generateAuthToken() {
-        const token = jwt.sign(
-            {
-                userId: this._id,
-                email: this.email,
-                name: this.name
-            },
+        return jwt.sign(
+            { userId: this._id, email: this.email, name: this.name },
             process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-            { expiresIn: '24h' }
+            { expiresIn: '15m' } // Short-lived access token
         );
+    }
+
+    generateRefreshToken() {
+        const token = crypto.randomBytes(64).toString('hex');
+        this.refreshToken = token;
+        this.refreshTokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
         return token;
+    }
+
+    generateVerificationToken() {
+        const token = crypto.randomBytes(32).toString('hex');
+        this.verificationToken = token;
+        this.verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+        return token;
+    }
+
+    generateResetToken() {
+        const token = crypto.randomBytes(32).toString('hex');
+        this.resetToken = token;
+        this.resetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1h
+        return token;
+    }
+
+    static async findByRefreshToken(token) {
+        try {
+            const snapshot = await db.collection(User.collectionName)
+                .where('refreshToken', '==', token)
+                .limit(1)
+                .get();
+            if (snapshot.empty) return null;
+            const doc = snapshot.docs[0];
+            const userData = doc.data();
+            userData._id = doc.id;
+            return new User(userData);
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    static async findByVerificationToken(token) {
+        try {
+            const snapshot = await db.collection(User.collectionName)
+                .where('verificationToken', '==', token)
+                .limit(1)
+                .get();
+            if (snapshot.empty) return null;
+            const doc = snapshot.docs[0];
+            const userData = doc.data();
+            userData._id = doc.id;
+            return new User(userData);
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    static async findByResetToken(token) {
+        try {
+            const snapshot = await db.collection(User.collectionName)
+                .where('resetToken', '==', token)
+                .limit(1)
+                .get();
+            if (snapshot.empty) return null;
+            const doc = snapshot.docs[0];
+            const userData = doc.data();
+            userData._id = doc.id;
+            return new User(userData);
+        } catch (err) {
+            throw err;
+        }
     }
 }
 

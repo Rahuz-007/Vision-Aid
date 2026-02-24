@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { useColorHistory } from '../../../context/ColorHistoryContext';
 import EmptyState, { EmptyStateCompact } from '../../common/EmptyState';
+import CameraPermissionGuide from '../../common/CameraPermissionGuide';
 
 /**
  * Professional Traffic Signal Detector for Color Blind Users
@@ -42,6 +43,7 @@ const TrafficSignalDetector = () => {
   const [hapticEnabled, setHapticEnabled] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [detectionCount, setDetectionCount] = useState({ red: 0, yellow: 0, green: 0 });
+  const [cameraError, setCameraError] = useState(null); // for CameraPermissionGuide
 
   // NEW: Enhanced Features State
   const [flashlightOn, setFlashlightOn] = useState(false);
@@ -66,15 +68,18 @@ const TrafficSignalDetector = () => {
   useEffect(() => {
     return () => {
       stopCamera();
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      const ac = audioContextRef.current;
+      if (ac && ac.state !== 'closed') {
+        ac.close().catch(() => { }); // ignore any race-condition errors
+        audioContextRef.current = null;
       }
     };
   }, []);
 
   // Initialize Audio Context
   const initAudio = () => {
-    if (!audioContextRef.current) {
+    // Re-create if missing or already closed (e.g. after hot-reload cleanup)
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
   };
@@ -268,121 +273,131 @@ const TrafficSignalDetector = () => {
     lastSignalRef.current = signalStatus;
   }, [signalStatus, speak]);
 
-  // NEW: Detect Arrow Direction in Green Light
-  const detectArrowDirection = useCallback((imageData, x, y, width, height) => {
-    // Only detect arrows for green lights
+  /**
+   * detectArrowDirection — centroid-focused row/column profile approach
+   *
+   * 1. Find centroid of all green pixels in the scan area
+   * 2. Focus analysis on a tight ROI around that centroid (removes background noise)
+   * 3. Build row-width & column-height profiles inside the ROI
+   * 4. Compare top vs bottom (for UP ↑) and left vs right (for ← →)
+   */
+  const detectArrowDirection = useCallback((imageData) => {
     if (!imageData) return null;
 
     try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = width;
-      canvas.height = height;
+      const { data, width, height } = imageData;
 
-      // Extract the region of interest
-      ctx.putImageData(imageData, -x, -y);
-      const regionData = ctx.getImageData(0, 0, width, height);
-      const data = regionData.data;
+      // ── Step 1: Find all green pixels + compute centroid ─────────────────
+      const mask = new Uint8Array(width * height);
+      let totalGreen = 0, sumX = 0, sumY = 0;
 
-      // Divide region into quadrants for analysis
-      const midX = width / 2;
-      const midY = height / 2;
-
-      let leftPixels = 0;
-      let rightPixels = 0;
-      let topPixels = 0;
-      let bottomPixels = 0;
-      let centerPixels = 0;
-
-      // Count bright pixels in each region
       for (let py = 0; py < height; py++) {
         for (let px = 0; px < width; px++) {
           const idx = (py * width + px) * 4;
-          const r = data[idx];
-          const g = data[idx + 1];
-          const b = data[idx + 2];
-
-          // Check if pixel is bright (part of the arrow/circle)
-          const brightness = (r + g + b) / 3;
-          if (brightness > 100) {
-            // Determine which region this pixel belongs to
-            const distFromCenterX = Math.abs(px - midX);
-            const distFromCenterY = Math.abs(py - midY);
-
-            // Center region (for detecting circles)
-            if (distFromCenterX < width * 0.2 && distFromCenterY < height * 0.2) {
-              centerPixels++;
-            }
-
-            // Left region (for left arrow)
-            if (px < midX * 0.6) {
-              leftPixels++;
-            }
-
-            // Right region (for right arrow)
-            if (px > midX * 1.4) {
-              rightPixels++;
-            }
-
-            // Top region (for straight arrow)
-            if (py < midY * 0.6) {
-              topPixels++;
-            }
-
-            // Bottom region
-            if (py > midY * 1.4) {
-              bottomPixels++;
-            }
+          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+          const max = Math.max(r, g, b);
+          if (max === 0) continue;
+          const s = (max - Math.min(r, g, b)) / max;
+          const v = max / 255;
+          if (g === max && g > r && g > b && s > 0.28 && v > 0.30) {
+            mask[py * width + px] = 1;
+            totalGreen++;
+            sumX += px;
+            sumY += py;
           }
         }
       }
 
-      const totalPixels = leftPixels + rightPixels + topPixels + bottomPixels + centerPixels;
-      if (totalPixels < 50) return null; // Not enough data
+      if (totalGreen < 60) return null;
 
-      // Calculate ratios
-      const leftRatio = leftPixels / totalPixels;
-      const rightRatio = rightPixels / totalPixels;
-      const topRatio = topPixels / totalPixels;
-      const centerRatio = centerPixels / totalPixels;
+      // ── Step 2: Focus ROI around centroid (cuts out background noise) ─────
+      const cx = Math.round(sumX / totalGreen);
+      const cy = Math.round(sumY / totalGreen);
 
-      // Determine arrow direction based on pixel distribution
-      const threshold = 0.15; // 15% threshold
+      // Window = ±35% of full scan dimensions, clamped to image bounds
+      const roiHalfW = Math.floor(width * 0.35);
+      const roiHalfH = Math.floor(height * 0.35);
+      const x0 = Math.max(0, cx - roiHalfW);
+      const x1 = Math.min(width - 1, cx + roiHalfW);
+      const y0 = Math.max(0, cy - roiHalfH);
+      const y1 = Math.min(height - 1, cy + roiHalfH);
 
-      // Left arrow: more pixels on the left
-      if (leftRatio > threshold && leftRatio > rightRatio && leftRatio > topRatio) {
-        return 'left';
+      const roiW = x1 - x0 + 1;
+      const roiH = y1 - y0 + 1;
+      const halfROIH = Math.floor(roiH / 2);
+      const halfROIW = Math.floor(roiW / 2);
+
+      // ── Step 3: Row-width profile inside ROI ─────────────────────────────
+      // UP ↑ arrow: top rows are WIDE (arrowhead), bottom rows are NARROW (shaft)
+      const rowW = new Float32Array(roiH);
+      for (let py = y0; py <= y1; py++) {
+        let cnt = 0;
+        for (let px = x0; px <= x1; px++) {
+          if (mask[py * width + px]) cnt++;
+        }
+        rowW[py - y0] = cnt;
       }
 
-      // Right arrow: more pixels on the right
-      if (rightRatio > threshold && rightRatio > leftRatio && rightRatio > topRatio) {
-        return 'right';
+      // ── Step 4: Column-height profile inside ROI ─────────────────────────
+      // LEFT ← arrow: left cols are TALL (arrowhead), right cols are SHORT (shaft)
+      // RIGHT → arrow: right cols are TALL, left cols are SHORT
+      const colH = new Float32Array(roiW);
+      for (let px = x0; px <= x1; px++) {
+        let cnt = 0;
+        for (let py = y0; py <= y1; py++) {
+          if (mask[py * width + px]) cnt++;
+        }
+        colH[px - x0] = cnt;
       }
 
-      // Straight arrow: more pixels on top
-      if (topRatio > threshold && topRatio > leftRatio && topRatio > rightRatio) {
-        return 'straight';
-      }
+      // ── Step 5: Average first-half vs second-half ────────────────────────
+      let rowTopAvg = 0, rowBotAvg = 0;
+      for (let i = 0; i < halfROIH; i++) rowTopAvg += rowW[i];
+      for (let i = halfROIH; i < roiH; i++) rowBotAvg += rowW[i];
+      rowTopAvg /= halfROIH || 1;
+      rowBotAvg /= (roiH - halfROIH) || 1;
 
-      // Circle: pixels evenly distributed or concentrated in center
-      if (centerRatio > 0.3) {
-        return null; // Circle (no arrow)
-      }
+      let colLeftAvg = 0, colRightAvg = 0;
+      for (let i = 0; i < halfROIW; i++) colLeftAvg += colH[i];
+      for (let i = halfROIW; i < roiW; i++) colRightAvg += colH[i];
+      colLeftAvg /= halfROIW || 1;
+      colRightAvg /= (roiW - halfROIW) || 1;
 
-      return null; // Default to no arrow
-    } catch (error) {
-      console.error('Arrow detection error:', error);
+      // ── Step 6: Score each direction ─────────────────────────────────────
+      // Arrow head/shaft ratio — a clean arrow = clearly > 1; plain circle ≈ 1
+      const safe = (a, b) => (b > 0 ? a / b : (a > 0 ? 9 : 1));
+
+      const scoreUp = safe(rowTopAvg, rowBotAvg);   // wide-top    → ↑
+      const scoreLeft = safe(colLeftAvg, colRightAvg); // tall-left   → ←
+      const scoreRight = safe(colRightAvg, colLeftAvg);  // tall-right  → →
+
+      const THRESH = 1.3; // head must be ≥30% wider/taller than shaft
+
+      const best = [
+        { dir: 'straight', score: scoreUp },
+        { dir: 'left', score: scoreLeft },
+        { dir: 'right', score: scoreRight },
+      ].sort((a, b) => b.score - a.score)[0];
+
+      if (best.score >= THRESH) return best.dir;
+
+      return null; // near-equal distribution → plain circle
+    } catch (err) {
+      console.error('Arrow detection error:', err);
       return null;
     }
   }, []);
 
+
+
   // Start Camera
   const startCamera = async () => {
+    setCameraError(null);
     try {
       const constraints = {
         video: {
-          facingMode: 'environment', // Use back camera
-          width: { ideal: 1280 },    // Standard HD is enough, 4K slows down processing
+          facingMode: 'environment',
+          width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 }
         }
@@ -395,13 +410,13 @@ const TrafficSignalDetector = () => {
         videoRef.current.onloadedmetadata = () => {
           videoRef.current.play();
           setIsDetecting(true);
-          toast.success("Camera Started - Point at Traffic Light");
-          speak("Camera activated.");
+          toast.success('Camera Started - Point at Traffic Light');
+          speak('Camera activated.');
         };
       }
     } catch (err) {
-      console.error("Camera Error:", err);
-      toast.error("Could not access camera. Please check permissions.");
+      console.error('Camera Error:', err);
+      setCameraError(err);
     }
   };
 
@@ -622,6 +637,7 @@ const TrafficSignalDetector = () => {
     const data = imageData.data;
 
     let redCount = 0, greenCount = 0, yellowCount = 0;
+    let currentArrow = null; // local var — avoids stale React state
 
     // 3. ROBUST HSV SCAN (Client Side - Fast)
     // Skip every 4 pixels for performance (still very accurate)
@@ -679,21 +695,14 @@ const TrafficSignalDetector = () => {
       currentFrameStatus = 'Green Light';
       currentConfidence = Math.min(99, Math.round((greenCount / (redCount + greenCount + yellowCount + 1)) * 100));
 
-      // NEW: Detect arrow direction for green lights
-      // Find the brightest green region for arrow detection
-      const greenRegionSize = Math.min(canvas.width, canvas.height) / 4;
-      const greenRegionX = Math.floor((canvas.width - greenRegionSize) / 2);
-      const greenRegionY = Math.floor((canvas.height - greenRegionSize) / 2);
-
-      const detectedArrow = detectArrowDirection(
-        imageData,
-        greenRegionX,
-        greenRegionY,
-        Math.floor(greenRegionSize),
-        Math.floor(greenRegionSize)
-      );
-
+      // ── Arrow Direction Detection ──────────────────────────────────────
+      // Pass the already-extracted imageData (the scan-area) directly.
+      // detectArrowDirection analyses green pixel distribution inside it.
+      const detectedArrow = detectArrowDirection(imageData);
       setArrowDirection(detectedArrow);
+
+      // Use detectedArrow (local var) immediately — don't wait for React re-render
+      currentArrow = detectedArrow;
     }
 
     // 5. HYBRID AI CHECK
@@ -748,29 +757,29 @@ const TrafficSignalDetector = () => {
         vibrate([200, 100, 200]); // Medium double pulse for YELLOW (caution)
         speak(announcement);
       } else if (mostFrequent === 'Green Light') {
-        // NEW: Arrow-specific announcements and feedback
-        if (arrowDirection === 'left') {
+        // Arrow-specific announcements and feedback (use currentArrow, not stale state)
+        if (currentArrow === 'left') {
           announcement = 'Green arrow - turn left safe';
-          playTone(850, 250, 'left'); // Descending tone
-          vibrate([100, 50, 100]); // Short double pulse
-        } else if (arrowDirection === 'right') {
+          playTone(850, 250, 'left');
+          vibrate([100, 50, 100]);
+        } else if (currentArrow === 'right') {
           announcement = 'Green arrow - turn right safe';
-          playTone(850, 250, 'right'); // Ascending tone
-          vibrate([150, 50, 150]); // Medium double pulse
-        } else if (arrowDirection === 'straight') {
+          playTone(850, 250, 'right');
+          vibrate([150, 50, 150]);
+        } else if (currentArrow === 'straight') {
           announcement = 'Green arrow - go straight';
-          playTone(850, 150, 'straight'); // Double beep
+          playTone(850, 150, 'straight');
           setTimeout(() => playTone(850, 150, 'straight'), 200);
-          vibrate([100, 50, 100, 50, 100]); // Triple short pulse
+          vibrate([100, 50, 100, 50, 100]);
         } else {
           announcement = 'Green light - proceed with caution';
-          playTone(850, 200); // Standard high tone
-          vibrate([100, 50, 100, 50, 100]); // Triple short pulse
+          playTone(850, 200);
+          vibrate([100, 50, 100, 50, 100]);
         }
         speak(announcement);
       }
 
-      addToHistory(mostFrequent, currentConfidence, arrowDirection);
+      addToHistory(mostFrequent, currentConfidence, currentArrow);
     } else if (statusHistory.current.every(s => s === 'No Signal')) {
       setSignalStatus('No Signal');
       setConfidence(0);
@@ -790,7 +799,7 @@ const TrafficSignalDetector = () => {
       ctx.strokeRect(centerX - sampleW / 2, centerY - sampleH / 2, sampleW, sampleH);
     }
 
-  }, [signalStatus, speak, isDetecting, playTone, vibrate, addToHistory, checkDistance]);
+  }, [signalStatus, speak, isDetecting, playTone, vibrate, addToHistory, checkDistance, detectArrowDirection]);
 
   // Detection Loop
   useEffect(() => {
@@ -906,15 +915,17 @@ const TrafficSignalDetector = () => {
                         <div>
                           <div className="text-xl font-bold text-gray-900 dark:text-white drop-shadow-md">
                             {signalStatus}
-                            {signalStatus === 'Green Light' && arrowDirection && (
-                              <span className="text-base ml-2">
-                                {arrowDirection === 'left' && '- Turn Left'}
-                                {arrowDirection === 'right' && '- Turn Right'}
-                                {arrowDirection === 'straight' && '- Go Straight'}
-                              </span>
-                            )}
                           </div>
-                          <div className="text-sm text-gray-700 dark:text-gray-200/90 font-medium">Confidence: {confidence}%</div>
+                          {/* ── LARGE ARROW DIRECTION BADGE ── */}
+                          {signalStatus === 'Green Light' && arrowDirection && (
+                            <div className={`mt-1.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-black text-sm tracking-wide shadow-lg
+                              bg-green-600 text-white border border-green-400/50`}>
+                              {arrowDirection === 'left' && <><FaArrowLeft className="text-base" /> Turn Left</>}
+                              {arrowDirection === 'right' && <><FaArrowRight className="text-base" /> Turn Right</>}
+                              {arrowDirection === 'straight' && <><FaArrowUp className="text-base" /> Go Straight</>}
+                            </div>
+                          )}
+                          <div className="text-sm text-gray-700 dark:text-gray-200/90 font-medium mt-1">Confidence: {confidence}%</div>
                         </div>
                       </div>
                       {/* Confidence Bar */}
@@ -939,13 +950,19 @@ const TrafficSignalDetector = () => {
                 </motion.div>
               )}
 
-              {/* Visual Traffic Light Indicator - Compact & Elegant */}
+              {/* Visual Traffic Light Indicator - with Pulse Rings */}
               <div className="absolute top-4 right-4 z-[20] flex flex-col items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 rounded-3xl p-3 shadow-2xl">
                 <div className="absolute -top-2 w-full h-3 bg-gradient-to-b from-gray-800 to-transparent rounded-t-3xl" />
 
                 <div className="flex flex-col gap-2.5 pt-1">
                   {/* Red */}
-                  <div className="relative">
+                  <div className="relative flex items-center justify-center">
+                    {signalStatus === 'Red Light' && isDetecting && (
+                      <>
+                        <motion.div className="absolute inset-0 rounded-full border-2 border-red-500" animate={{ scale: [1, 1.8, 2.4], opacity: [0.7, 0.3, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }} />
+                        <motion.div className="absolute inset-0 rounded-full border-2 border-red-500" animate={{ scale: [1, 1.8, 2.4], opacity: [0.7, 0.3, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut', delay: 0.5 }} />
+                      </>
+                    )}
                     <div className={`w-11 h-11 rounded-full border-2 border-gray-100 dark:border-black/50 transition-all duration-300 flex items-center justify-center ${signalStatus === 'Red Light'
                       ? 'bg-red-500 shadow-[0_0_25px_#ef4444] scale-110'
                       : 'bg-red-100/50 dark:bg-red-950/40'
@@ -957,7 +974,13 @@ const TrafficSignalDetector = () => {
                   </div>
 
                   {/* Yellow */}
-                  <div className="relative">
+                  <div className="relative flex items-center justify-center">
+                    {signalStatus === 'Yellow Light' && isDetecting && (
+                      <>
+                        <motion.div className="absolute inset-0 rounded-full border-2 border-yellow-500" animate={{ scale: [1, 1.8, 2.4], opacity: [0.7, 0.3, 0] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }} />
+                        <motion.div className="absolute inset-0 rounded-full border-2 border-yellow-500" animate={{ scale: [1, 1.8, 2.4], opacity: [0.7, 0.3, 0] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut', delay: 0.4 }} />
+                      </>
+                    )}
                     <div className={`w-11 h-11 rounded-full border-2 border-gray-100 dark:border-black/50 transition-all duration-300 flex items-center justify-center ${signalStatus === 'Yellow Light'
                       ? 'bg-yellow-500 shadow-[0_0_25px_#eab308] scale-110'
                       : 'bg-yellow-100/50 dark:bg-yellow-950/40'
@@ -969,7 +992,13 @@ const TrafficSignalDetector = () => {
                   </div>
 
                   {/* Green */}
-                  <div className="relative">
+                  <div className="relative flex items-center justify-center">
+                    {signalStatus === 'Green Light' && isDetecting && (
+                      <>
+                        <motion.div className="absolute inset-0 rounded-full border-2 border-green-500" animate={{ scale: [1, 1.8, 2.4], opacity: [0.7, 0.3, 0] }} transition={{ duration: 1.0, repeat: Infinity, ease: 'easeOut' }} />
+                        <motion.div className="absolute inset-0 rounded-full border-2 border-green-500" animate={{ scale: [1, 1.8, 2.4], opacity: [0.7, 0.3, 0] }} transition={{ duration: 1.0, repeat: Infinity, ease: 'easeOut', delay: 0.35 }} />
+                      </>
+                    )}
                     <div className={`w-11 h-11 rounded-full border-2 border-gray-100 dark:border-black/50 transition-all duration-300 flex items-center justify-center ${signalStatus === 'Green Light'
                       ? 'bg-green-500 shadow-[0_0_25px_#22c55e] scale-110'
                       : 'bg-green-100/50 dark:bg-green-950/40'
@@ -987,8 +1016,17 @@ const TrafficSignalDetector = () => {
                 </div>
               </div>
 
+              {/* Camera Permission Guide — shown if camera fails */}
+              {cameraError && (
+                <CameraPermissionGuide
+                  error={cameraError}
+                  onRetry={() => { setCameraError(null); startCamera(); }}
+                  onDismiss={() => setCameraError(null)}
+                />
+              )}
+
               {/* Camera Access Screen */}
-              {!isDetecting && (
+              {!isDetecting && !cameraError && (
                 <div className="absolute inset-0 bg-white/95 dark:bg-gradient-to-br dark:from-black/95 dark:via-gray-900/95 dark:to-black/95 backdrop-blur-md flex items-center justify-center z-40 p-6">
                   <div className="p-8 rounded-3xl bg-white/90 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/80 border-2 border-gray-100 dark:border-gray-700/50 text-center max-w-md w-full shadow-2xl backdrop-blur-xl">
                     <div className="w-24 h-24 bg-blue-50 dark:bg-gradient-to-br dark:from-blue-600/30 dark:to-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border-2 border-blue-100 dark:border-blue-500/30 shadow-lg shadow-blue-500/20">
@@ -1231,21 +1269,37 @@ const TrafficSignalDetector = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className={`p-4 rounded-xl border-2 ${entry.signal === 'Red Light' ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30' :
+                        className={`p-4 rounded-xl border-2 flex items-start gap-3 ${entry.signal === 'Red Light' ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30' :
                           entry.signal === 'Yellow Light' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-900/30' :
                             'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30'
                           }`}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{entry.icon}</span>
-                            <span className="text-lg">{getSignalShape(entry.signal)}</span>
+                        {/* Color Stripe */}
+                        <div className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${entry.signal === 'Red Light' ? 'bg-red-500' :
+                          entry.signal === 'Yellow Light' ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{entry.icon}</span>
+                              <span className="text-base">{getSignalShape(entry.signal)}</span>
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{entry.time}</span>
                           </div>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{entry.time}</span>
-                        </div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{entry.signal}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Confidence: {entry.confidence}%
+                          <div className="text-sm font-bold text-gray-900 dark:text-white">{entry.signal}</div>
+                          {/* Arrow direction in history */}
+                          {entry.arrow && (
+                            <div className={`mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold
+                              bg-green-600/20 text-green-700 dark:text-green-400 border border-green-500/30`}>
+                              {entry.arrow === 'left' && <><FaArrowLeft className="text-[10px]" /> Turn Left</>}
+                              {entry.arrow === 'right' && <><FaArrowRight className="text-[10px]" /> Turn Right</>}
+                              {entry.arrow === 'straight' && <><FaArrowUp className="text-[10px]" /> Go Straight</>}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Confidence: <span className="font-semibold">{entry.confidence}%</span>
+                          </div>
                         </div>
                       </motion.div>
                     ))}

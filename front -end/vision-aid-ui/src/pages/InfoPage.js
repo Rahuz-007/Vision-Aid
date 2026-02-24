@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaBook, FaCode, FaNewspaper, FaUsers, FaBriefcase, FaEnvelope, FaFileAlt, FaShieldAlt, FaGavel, FaCookieBite, FaBalanceScale } from 'react-icons/fa';
 
-const InfoPage = ({ title, category, type = 'generic' }) => {
+const InfoPage = ({ title = '', category, type = 'generic' }) => {
     // Icon mapping based on title
     const getIcon = () => {
-        const titleLower = title.toLowerCase();
+        const titleLower = (title || '').toLowerCase();
         if (titleLower.includes('documentation')) return FaBook;
         if (titleLower.includes('api')) return FaCode;
         if (titleLower.includes('blog')) return FaNewspaper;
@@ -27,7 +27,7 @@ const InfoPage = ({ title, category, type = 'generic' }) => {
         generic: [
             {
                 heading: "Overview",
-                content: `Welcome to the ${title} page. VisionAid is dedicated to making the digital world accessible for everyone. This section provides detailed information about ${title.toLowerCase()} and how it relates to our mission of color accessibility.`
+                content: `Welcome to the ${title} page. VisionAid is dedicated to making the digital world accessible for everyone. This section provides detailed information about ${(title || '').toLowerCase()} and how it relates to our mission of color accessibility.`
             },
             {
                 heading: "Key Information",
@@ -142,7 +142,7 @@ const InfoPage = ({ title, category, type = 'generic' }) => {
     };
 
     let content;
-    const t = title.toLowerCase();
+    const t = (title || '').toLowerCase();
 
     if (t.includes('privacy')) content = sections.privacy;
     else if (t.includes('career')) content = sections.careers;

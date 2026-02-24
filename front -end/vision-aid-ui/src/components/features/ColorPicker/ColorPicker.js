@@ -174,8 +174,8 @@ const ColorDetector = () => {
     const [matchItem1, setMatchItem1] = useState(null);
     const [matchItem2, setMatchItem2] = useState(null);
     const [matchVerdict, setMatchVerdict] = useState(null);
-    const [occasionAdvice, setOccasionAdvice] = useState(null); // New Feature: Occasion AI
-    const [showTryOn, setShowTryOn] = useState(false); // New Feature: Virtual Preview
+    const [occasionAdvice, setOccasionAdvice] = useState(null);
+    const [showTryOn, setShowTryOn] = useState(false);
 
     // Pattern Feature
     const [patternEnabled, setPatternEnabled] = useState(false);
@@ -186,6 +186,18 @@ const ColorDetector = () => {
     const [voiceEnabled, setVoiceEnabled] = useState(true);
     const [colorInfo, setColorInfo] = useState(null);
     const [detailTab, setDetailTab] = useState('info'); // 'info', 'harmony', 'access'
+
+    // ── NEW: Inline recent colors ──────────────────────────────────────────
+    const [recentColors, setRecentColors] = useState([]);
+    const [copied, setCopied] = useState(false);
+
+    const copyHex = useCallback((hex) => {
+        navigator.clipboard.writeText(hex).then(() => {
+            setCopied(true);
+            toast.success(`Copied ${hex}`, { icon: '📋' });
+            setTimeout(() => setCopied(false), 1800);
+        });
+    }, []);
 
     const analyzeColor = useCallback((currentHex) => {
         const r = parseInt(currentHex.substr(1, 2), 16);
@@ -364,6 +376,8 @@ const ColorDetector = () => {
             rgb: colorInfo.rgb,
             note: mode === 'match' ? 'Outfit Match' : `Detected (${mode})`
         }, "Color Detector");
+        // Also push to inline recent list
+        setRecentColors(prev => [colorInfo.hex, ...prev.filter(c => c !== colorInfo.hex)].slice(0, 5));
         toast.success(`Saved "${colorInfo.name}"`);
     };
 
@@ -871,8 +885,52 @@ const ColorDetector = () => {
                                 colorInfo ? (
                                     <motion.div key={colorInfo.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full">
                                         <div className="mb-4">
-                                            <h2 className="text-4xl md:text-5xl font-black mb-1 text-gray-900 dark:text-white">{colorInfo.name}</h2>
-                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-xs tracking-wider text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 font-mono mb-4">{colorInfo.hex}</div>
+                                            {/* Color swatch header */}
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div
+                                                    className="w-14 h-14 rounded-2xl shadow-lg border border-white/10 flex-shrink-0"
+                                                    style={{ backgroundColor: colorInfo.hex }}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <h2 className="text-2xl md:text-3xl font-black mb-0.5 text-gray-900 dark:text-white leading-tight truncate">{colorInfo.name}</h2>
+                                                    {/* ── ONE-CLICK COPY HEX ── */}
+                                                    <motion.button
+                                                        onClick={() => copyHex(colorInfo.hex)}
+                                                        whileTap={{ scale: 0.92 }}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-xs font-bold tracking-wider text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 transition-all font-mono"
+                                                    >
+                                                        <AnimatePresence mode="wait">
+                                                            {copied ? (
+                                                                <motion.span key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-green-500">✓</motion.span>
+                                                            ) : (
+                                                                <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}><FaCopy className="text-[10px]" /></motion.span>
+                                                            )}
+                                                        </AnimatePresence>
+                                                        {colorInfo.hex}
+                                                    </motion.button>
+                                                </div>
+                                            </div>
+
+                                            {/* ── RECENT COLORS STRIP ── */}
+                                            {recentColors.length > 0 && (
+                                                <div className="flex items-center gap-2 mb-3 p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest shrink-0">Recent</span>
+                                                    <div className="flex gap-1.5 flex-wrap">
+                                                        {recentColors.map((c, i) => (
+                                                            <motion.button
+                                                                key={c + i}
+                                                                title={c}
+                                                                onClick={() => copyHex(c)}
+                                                                whileHover={{ scale: 1.2 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-700 shadow-sm"
+                                                                style={{ backgroundColor: c }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400 ml-auto">tap to copy</span>
+                                                </div>
+                                            )}
 
                                             {/* Feature Tabs */}
                                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-4">

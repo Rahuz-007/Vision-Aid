@@ -8,7 +8,6 @@
  *  4. StatsSection          → 3 impact statistics
  *  5. EmpoweringSection     → For Designers / Devs / Daily Users
  *  6. TestimonialsSection   → User reviews
- *  7. FinalCTASection       → Bottom of funnel CTA
  */
 
 import React from 'react';
@@ -17,7 +16,7 @@ import HowItWorksSection from '../components/home/HowItWorksSection';
 import FeaturesSection from '../components/home/FeaturesSection';
 import StatsSection from '../components/home/StatsSection';
 import { EmpoweringSection, TestimonialsSection } from '../components/home/SocialProofSections';
-import FinalCTASection from '../components/home/FinalCTASection';
+
 
 const Home = () => (
     <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#050505] text-gray-900 dark:text-white transition-colors duration-300 selection:bg-purple-500/30">
@@ -27,7 +26,7 @@ const Home = () => (
         <StatsSection />
         <EmpoweringSection />
         <TestimonialsSection />
-        <FinalCTASection />
+
     </div>
 );
 

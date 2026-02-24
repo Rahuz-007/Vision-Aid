@@ -16,7 +16,7 @@ import {
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '../../context/SettingsContext';
-import SearchBar from '../common/SearchBar';
+import CommandPalette from '../common/CommandPalette';
 
 // All feature tools for the mega-dropdown
 const TOOLS = [
@@ -36,7 +36,7 @@ const Header = () => {
     const { currentUser, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const { isDarkMode } = useTheme();
+    const { isDarkMode, toggleTheme } = useTheme();
     const { history: colorHistory } = useColorHistory();
     const { speak } = useSettings(); // Get speak from context
 
@@ -125,47 +125,7 @@ const Header = () => {
     const isToolActive = () => toolPaths.includes(location.pathname);
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    // Search functionality
-    const searchSuggestions = [
-        'Color Picker', 'Color Detector', 'Live Color Detection',
-        'Traffic Signal', 'Traffic Light Detection',
-        'Color Blindness Simulator', 'Protanopia', 'Deuteranopia', 'Tritanopia',
-        'Palette Checker', 'Contrast Checker', 'WCAG Compliance',
-        'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange',
-        'Saved Colors', 'Color History', 'Settings', 'Profile'
-    ];
 
-    const handleSearch = (query) => {
-        if (!query) return;
-        const lowerQuery = query.toLowerCase();
-
-        // Navigate based on search query
-        if (lowerQuery.includes('color') && (lowerQuery.includes('pick') || lowerQuery.includes('detect'))) {
-            navigate('/color-picker');
-        } else if (lowerQuery.includes('traffic') || lowerQuery.includes('signal')) {
-            navigate('/traffic-signal');
-        } else if (lowerQuery.includes('simulat') || lowerQuery.includes('blind')) {
-            navigate('/simulator');
-        } else if (lowerQuery.includes('palette') || lowerQuery.includes('contrast')) {
-            navigate('/palette-checker');
-        } else if (lowerQuery.includes('saved') || lowerQuery.includes('history')) {
-            navigate('/color-history');
-        } else if (lowerQuery.includes('setting')) {
-            setIsSettingsModalOpen(true);
-        } else if (lowerQuery.includes('profile')) {
-            setIsProfileModalOpen(true);
-        } else {
-            // Try to match color names
-            const colorMatch = navLinks.find(link =>
-                link.label.toLowerCase().includes(lowerQuery)
-            );
-            if (colorMatch) {
-                navigate(colorMatch.to);
-            } else {
-                vaToast.error(`No results found for "${query}"`);
-            }
-        }
-    };
 
     return (
         <header className="sticky top-0 z-[999] w-full bg-white/50 dark:bg-[#0a0f1c]/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 transition-colors duration-300">
@@ -289,14 +249,70 @@ const Header = () => {
                     </nav>
 
                     {/* Right Action Section */}
-                    <div className="flex-1 flex items-center justify-end gap-3">
+                    <div className="flex-1 flex items-center justify-end gap-2">
 
-                        {/* Search Bar - Compact Icon */}
-                        <SearchBar
-                            placeholder="Search colors, features..."
-                            onSearch={handleSearch}
-                            suggestions={searchSuggestions}
-                        />
+                        {/* Command Palette — single unified search (Ctrl+K) */}
+                        <CommandPalette />
+
+                        {/* ── Dark / Light Mode Toggle ── */}
+                        <motion.button
+                            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                            onClick={toggleTheme}
+                            title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.88 }}
+                            className="relative w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition-colors duration-300"
+                            style={{
+                                background: isDarkMode
+                                    ? 'linear-gradient(135deg, #1e293b, #0f172a)'
+                                    : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                                boxShadow: isDarkMode
+                                    ? '0 0 0 1px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.05)'
+                                    : '0 0 0 1px rgba(0,0,0,0.08), 0 2px 8px rgba(245,158,11,0.25)',
+                            }}
+                        >
+                            <AnimatePresence mode="wait">
+                                {isDarkMode ? (
+                                    /* Moon */
+                                    <motion.svg
+                                        key="moon"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="w-5 h-5 text-indigo-300"
+                                        initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                                        animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                                        exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                                    >
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+                                    </motion.svg>
+                                ) : (
+                                    /* Sun */
+                                    <motion.svg
+                                        key="sun"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="w-5 h-5 text-amber-500"
+                                        initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                                        animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                                        exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                                    >
+                                        <circle cx="12" cy="12" r="5" />
+                                        <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                    </motion.svg>
+                                )}
+                            </AnimatePresence>
+                        </motion.button>
 
                         {/* Notifications */}
                         <div className="relative" ref={notifRef}>
