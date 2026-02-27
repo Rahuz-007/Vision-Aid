@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useColorHistory } from '../../context/ColorHistoryContext';
+import { useNotifications } from '../../context/NotificationContext';
 import LoginModal from '../auth/LoginModal';
 import ProfileModal from '../auth/ProfileModal';
 import SettingsModal from './SettingsModal';
@@ -12,7 +13,7 @@ import {
     FaBars, FaTimes, FaBell, FaCog,
     FaUser, FaSignOutAlt, FaQuestionCircle, FaSlidersH, FaPalette,
     FaVolumeUp, FaCheckDouble, FaInfoCircle, FaCheckCircle, FaExclamationTriangle,
-    FaCamera, FaEye, FaExchangeAlt, FaTrafficLight, FaHistory, FaImages, FaChevronDown
+    FaCamera, FaEye, FaExchangeAlt, FaTrafficLight, FaHistory, FaImages, FaChevronDown, FaAdjust
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '../../context/SettingsContext';
@@ -30,6 +31,8 @@ const TOOLS = [
     { label: 'Vision Test', desc: 'Colour blindness screening test', to: '/color-test', icon: FaEye, color: 'text-teal-500', bg: 'bg-teal-500/10' },
     { label: 'Colour Psychology', desc: 'Emotions & meanings behind colour', to: '/color-psychology', icon: FaSlidersH, color: 'text-rose-500', bg: 'bg-rose-500/10' },
     { label: 'Text Accessibility', desc: 'Font size & weight contrast checker', to: '/text-checker', icon: FaCheckDouble, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+    { label: 'Color Object Detector', desc: 'AI color labels on every object', to: '/color-object-detector', icon: FaCamera, color: 'text-violet-500', bg: 'bg-violet-500/10' },
+    { label: 'Image Recolor', desc: 'Simulate & fix color blindness on images', to: '/image-recolor', icon: FaAdjust, color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
 ];
 
 const Header = () => {
@@ -48,11 +51,9 @@ const Header = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [notificationOpen, setNotificationOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [notifications, setNotifications] = useState([
-        { id: 1, text: "Welcome to VisionAid! Try our new features.", time: "2m ago", read: false, type: 'info' },
-        { id: 2, text: "Traffic Signal Detector updated.", time: "1h ago", read: false, type: 'success', link: '/traffic-signal' },
-        { id: 3, text: "Your profile is 80% complete.", time: "1d ago", read: true, type: 'warning', action: 'profile' }
-    ]);
+
+    // Global notification context
+    const { notifications, markAsRead, clearAllNotifications, unreadCount } = useNotifications();
 
     // Refs for click outside
     const notifRef = useRef(null);
@@ -88,13 +89,10 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const markAsRead = (id) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        vaToast.success('Marked as read');
-    };
-
-    const clearAllNotifications = () => {
-        setNotifications([]);
+    // Functions from context already handle state updates; 
+    // we just want to optionally show a toast when user clears them here if needed.
+    const handleClearAll = () => {
+        clearAllNotifications();
         vaToast.info('Notifications cleared');
     };
 
@@ -123,10 +121,6 @@ const Header = () => {
     const toolPaths = TOOLS.map(t => t.to);
     const isActive = (path) => location.pathname === path;
     const isToolActive = () => toolPaths.includes(location.pathname);
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-
-
     return (
         <header className="sticky top-0 z-[999] w-full bg-white/50 dark:bg-[#0a0f1c]/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -342,7 +336,7 @@ const Header = () => {
                                                     <FaVolumeUp className="w-3 h-3" />
                                                 </button>
                                             </div>
-                                            <button onClick={clearAllNotifications} className="text-xs font-medium text-gray-500 hover:text-red-500 flex items-center gap-1 transition-colors">
+                                            <button onClick={handleClearAll} className="text-xs font-medium text-gray-500 hover:text-red-500 flex items-center gap-1 transition-colors">
                                                 Clear all
                                             </button>
                                         </div>

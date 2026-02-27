@@ -127,6 +127,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/api/traffic-signal', trafficSignalRoutes);
 app.use('/api/image', require('./routes/image-processing'));
+app.use('/api/vision-test', require('./routes/vision-test'));
+app.use('/api/contact', require('./routes/contact'));
 
 
 

@@ -1,142 +1,147 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { FaGlobeAmericas, FaMale, FaEye, FaBolt } from 'react-icons/fa';
 
 // ── Animated count-up hook ─────────────────────────────────────────────────
 function useCountUp(end, duration = 2000, shouldStart = false) {
     const [count, setCount] = useState(0);
-
     useEffect(() => {
-        if (!shouldStart) return;
+        if (!shouldStart || isNaN(end)) return;
         let start = 0;
         const increment = end / (duration / 16);
         const timer = setInterval(() => {
             start += increment;
-            if (start >= end) {
-                setCount(end);
-                clearInterval(timer);
-            } else {
-                setCount(Math.floor(start));
-            }
+            if (start >= end) { setCount(end); clearInterval(timer); }
+            else { setCount(Math.floor(start)); }
         }, 16);
         return () => clearInterval(timer);
     }, [end, duration, shouldStart]);
-
     return count;
 }
 
-// ── Individual animated stat card ─────────────────────────────────────────
+const STATS = [
+    {
+        icon: FaGlobeAmericas,
+        value: '300M+',
+        rawNumber: 300,
+        prefix: '',
+        suffix: 'M+',
+        label: 'People Affected',
+        sub: 'Living with colour vision deficiency worldwide',
+        from: '#7c3aed',
+        to: '#4f46e5',
+        glow: 'rgba(124,58,237,0.3)',
+    },
+    {
+        icon: FaMale,
+        value: '1 in 12',
+        rawNumber: NaN,
+        label: 'Men Affected',
+        sub: 'Colour blindness is far more common than most realise',
+        from: '#2563eb',
+        to: '#0891b2',
+        glow: 'rgba(37,99,235,0.3)',
+    },
+    {
+        icon: FaEye,
+        value: '9',
+        rawNumber: 9,
+        prefix: '',
+        suffix: '',
+        label: 'Types Simulated',
+        sub: 'Including Protanopia, Deuteranopia, Tritanopia & more',
+        from: '#db2777',
+        to: '#e11d48',
+        glow: 'rgba(219,39,119,0.3)',
+    },
+    {
+        icon: FaBolt,
+        value: '0.1s',
+        rawNumber: NaN,
+        label: 'AI Detection Speed',
+        sub: 'Real-time YOLOv8 + colour analysis, under a second',
+        from: '#059669',
+        to: '#0891b2',
+        glow: 'rgba(5,150,105,0.3)',
+    },
+];
+
 const StatCard = memo(({ stat, index }) => {
     const ref = useRef(null);
-    const isInView = useInView(ref, { once: true, margin: '-80px' });
+    const inView = useInView(ref, { once: true, margin: '-80px' });
+    const count = useCountUp(stat.rawNumber, 2000, inView && !isNaN(stat.rawNumber));
 
-    // Parse if it's a plain number vs complex string
-    const numericValue = parseInt(stat.rawNumber, 10);
-    const animatedCount = useCountUp(numericValue, 2200, isInView && !isNaN(numericValue));
-
-    const displayValue = isNaN(numericValue)
+    const display = isNaN(stat.rawNumber)
         ? stat.value
-        : stat.prefix + animatedCount.toLocaleString() + stat.suffix;
+        : (stat.prefix || '') + count.toLocaleString() + (stat.suffix || '');
 
     return (
         <motion.div
             ref={ref}
             initial={{ opacity: 0, y: 40 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, delay: index * 0.15, ease: 'easeOut' }}
-            className="relative group"
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: index * 0.12 }}
+            className="group relative"
         >
-            <div className="relative p-10 rounded-3xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden cursor-default">
-                {/* Background glow on hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${stat.hover} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+            <div className="relative rounded-3xl p-8 border border-white/5 hover:border-white/15 transition-all duration-500 overflow-hidden hover:-translate-y-2"
+                style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)', backdropFilter: 'blur(12px)' }}>
 
-                {/* Animated ring */}
-                <div
-                    className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-5 group-hover:opacity-20 transition-opacity duration-500"
-                    style={{ background: stat.ringColor }}
+                {/* Glow bg */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none"
+                    style={{ boxShadow: `inset 0 0 80px ${stat.glow}` }} />
+
+                {/* Corner blob */}
+                <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"
+                    style={{ background: `radial-gradient(circle, ${stat.from}, transparent)` }} />
+
+                {/* Icon */}
+                <div className="w-12 h-12 rounded-2xl mb-5 flex items-center justify-center text-white shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${stat.from}, ${stat.to})` }}>
+                    <stat.icon className="text-lg" />
+                </div>
+
+                {/* Value */}
+                <motion.div
+                    className="text-5xl sm:text-6xl font-black mb-2 bg-clip-text text-transparent"
+                    style={{ backgroundImage: `linear-gradient(135deg, #fff 40%, ${stat.from})` }}
+                    animate={inView ? { scale: [0.85, 1.04, 1] } : {}}
+                    transition={{ duration: 0.7, delay: index * 0.12 + 0.2 }}
+                >
+                    {display}
+                </motion.div>
+
+                {/* Gradient bar */}
+                <motion.div
+                    className="h-1 rounded-full mb-3"
+                    initial={{ width: 0 }}
+                    animate={inView ? { width: '55%' } : { width: 0 }}
+                    transition={{ duration: 0.9, delay: index * 0.12 + 0.4 }}
+                    style={{ background: `linear-gradient(90deg, ${stat.from}, ${stat.to})` }}
                 />
 
-                <div className="relative z-10">
-                    {/* Main stat number with count-up */}
-                    <motion.div
-                        className={`text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black ${stat.color} mb-6 tracking-tighter flex justify-center items-baseline gap-1`}
-                        style={{ textShadow: `0 0 40px ${stat.shadow}` }}
-                        animate={isInView ? { scale: [0.85, 1.05, 1] } : {}}
-                        transition={{ duration: 0.8, delay: index * 0.15 + 0.2 }}
-                    >
-                        {displayValue}
-                    </motion.div>
-
-                    {/* Animated underline */}
-                    <motion.div
-                        className={`h-1 rounded-full mb-4 mx-auto ${stat.barColor}`}
-                        initial={{ width: 0 }}
-                        animate={isInView ? { width: '60%' } : { width: 0 }}
-                        transition={{ duration: 1, delay: index * 0.15 + 0.5 }}
-                    />
-
-                    <p className={`${stat.labelColor} text-xl font-bold uppercase tracking-wider text-center`}>
-                        {stat.label}
-                    </p>
-                </div>
+                {/* Label */}
+                <p className="text-base font-bold text-white mb-1">{stat.label}</p>
+                <p className="text-xs text-gray-400 leading-relaxed">{stat.sub}</p>
             </div>
         </motion.div>
     );
 });
 StatCard.displayName = 'StatCard';
 
-// ── Stats data ─────────────────────────────────────────────────────────────
-const STATS = [
-    {
-        value: '300M+',
-        rawNumber: '300',
-        prefix: '',
-        suffix: 'M+',
-        label: 'People Affected Worldwide',
-        color: 'text-purple-600 dark:text-white',
-        shadow: 'rgba(168, 85, 247, 0.6)',
-        hover: 'from-purple-500/10',
-        labelColor: 'text-purple-600 dark:text-purple-400',
-        barColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
-        ringColor: '#a855f7',
-    },
-    {
-        value: '1 in 12',
-        rawNumber: NaN,
-        prefix: '',
-        suffix: '',
-        label: 'Men Have Color Blindness',
-        color: 'text-blue-600 dark:text-white',
-        shadow: 'rgba(59, 130, 246, 0.6)',
-        hover: 'from-blue-500/10',
-        labelColor: 'text-blue-600 dark:text-blue-400',
-        barColor: 'bg-gradient-to-r from-blue-500 to-cyan-500',
-        ringColor: '#3b82f6',
-    },
-    {
-        value: '9 Types',
-        rawNumber: '9',
-        prefix: '',
-        suffix: ' Types',
-        label: 'Color Blindness Supported',
-        color: 'text-pink-600 dark:text-white',
-        shadow: 'rgba(236, 72, 153, 0.6)',
-        hover: 'from-pink-500/10',
-        labelColor: 'text-pink-600 dark:text-pink-400',
-        barColor: 'bg-gradient-to-r from-pink-500 to-rose-500',
-        ringColor: '#ec4899',
-    },
-];
-
 const StatsSection = memo(() => {
     const headerRef = useRef(null);
     const headerInView = useInView(headerRef, { once: true });
 
     return (
-        <section className="relative py-24 border-t border-gray-200 dark:border-white/10 bg-gradient-to-b from-white to-gray-50 dark:from-[#0a0a0a] dark:to-[#050505]">
+        <section className="relative py-24 border-t border-white/5 overflow-hidden"
+            style={{ background: 'linear-gradient(180deg, #050505 0%, #080c14 100%)' }}>
+
             {/* Background glows */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl" />
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-30"
+                    style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.12), transparent)' }} />
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-30"
+                    style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.12), transparent)' }} />
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -147,16 +152,21 @@ const StatsSection = memo(() => {
                     transition={{ duration: 0.8 }}
                     className="text-center mb-16"
                 >
-                    <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 mb-4">
+                    <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-5 border"
+                        style={{ background: 'rgba(139,92,246,0.1)', color: '#a78bfa', borderColor: 'rgba(139,92,246,0.25)' }}>
                         Global Impact
                     </span>
-                    <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">By the Numbers</h2>
-                    <p className="text-lg text-gray-600 dark:text-gray-400">Understanding the global impact of color vision deficiency</p>
+                    <h2 className="text-4xl sm:text-5xl font-black text-white mb-4">
+                        The World Needs This
+                    </h2>
+                    <p className="text-gray-400 text-lg max-w-xl mx-auto">
+                        Colour blindness is the world's most common visual impairment — and it's largely overlooked in digital design.
+                    </p>
                 </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     {STATS.map((stat, i) => (
-                        <StatCard key={i} stat={stat} index={i} />
+                        <StatCard key={stat.label} stat={stat} index={i} />
                     ))}
                 </div>
             </div>

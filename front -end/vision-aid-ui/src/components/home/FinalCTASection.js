@@ -1,56 +1,72 @@
 import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaArrowRight, FaRocket, FaShieldAlt, FaHeart } from 'react-icons/fa';
+import { FaArrowRight, FaRocket, FaShieldAlt, FaHeart, FaBolt, FaCamera, FaPalette, FaEye } from 'react-icons/fa';
 
 const BADGES = [
-    { icon: FaRocket, label: 'Free Forever', color: 'from-blue-500 to-cyan-500' },
-    { icon: FaShieldAlt, label: 'Privacy-First', color: 'from-purple-500 to-indigo-500' },
-    { icon: FaHeart, label: 'Open Access', color: 'from-pink-500 to-rose-500' },
+    { icon: FaRocket, label: 'Free Forever', from: '#2563eb', to: '#4f46e5' },
+    { icon: FaShieldAlt, label: 'Privacy-First', from: '#7c3aed', to: '#6d28d9' },
+    { icon: FaHeart, label: 'Open Access', from: '#db2777', to: '#be123c' },
+];
+
+const QUICK_LINKS = [
+    { icon: FaCamera, label: 'Live Color Detector', to: '/color-picker', color: '#3b82f6' },
+    { icon: FaPalette, label: 'Palette Checker', to: '/palette-checker', color: '#7c3aed' },
+    { icon: FaEye, label: 'Blindness Simulator', to: '/simulator', color: '#10b981' },
+    { icon: FaBolt, label: 'Vision Test', to: '/color-test', color: '#f59e0b' },
 ];
 
 const FinalCTASection = memo(() => (
-    <section className="relative py-32 overflow-hidden bg-gray-900 dark:bg-[#050505]">
-        {/* Mesh gradient background */}
+    <section className="relative py-36 overflow-hidden"
+        style={{ background: 'linear-gradient(180deg, #080c14 0%, #030507 100%)' }}>
+
+        {/* Mesh gradient */}
         <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-900/60 dark:from-blue-950/60 via-purple-900/60 dark:via-purple-950/60 to-pink-900/40 dark:to-pink-950/40" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600/15 rounded-full blur-[120px]" />
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl" />
-            {/* Animated floating orbs */}
+            <div className="absolute top-0 left-0 w-full h-full"
+                style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(79,70,229,0.15), transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(219,39,119,0.12), transparent 60%)' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full blur-[140px] opacity-20"
+                style={{ background: 'conic-gradient(from 0deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6)' }} />
+            {/* Subtle grid */}
+            <div className="absolute inset-0 opacity-[0.03]"
+                style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
+            {/* Floating orbs */}
             {[
-                { size: 6, x: '10%', y: '20%', delay: 0, color: '#3B82F6' },
-                { size: 4, x: '85%', y: '15%', delay: 1, color: '#8B5CF6' },
-                { size: 8, x: '70%', y: '70%', delay: 0.5, color: '#EC4899' },
-                { size: 5, x: '20%', y: '75%', delay: 1.5, color: '#10B981' },
-                { size: 3, x: '50%', y: '10%', delay: 2, color: '#F59E0B' },
+                { size: 24, x: '8%', y: '18%', delay: 0, color: '#3B82F6' },
+                { size: 16, x: '88%', y: '12%', delay: 0.8, color: '#8B5CF6' },
+                { size: 28, x: '72%', y: '72%', delay: 0.4, color: '#EC4899' },
+                { size: 18, x: '18%', y: '78%', delay: 1.4, color: '#10B981' },
+                { size: 12, x: '50%', y: '8%', delay: 2, color: '#F59E0B' },
+                { size: 10, x: '40%', y: '88%', delay: 1, color: '#06B6D4' },
             ].map((orb, i) => (
                 <motion.div
                     key={i}
                     className="absolute rounded-full"
                     style={{
-                        width: orb.size * 4, height: orb.size * 4,
+                        width: orb.size, height: orb.size,
                         left: orb.x, top: orb.y,
                         background: orb.color,
-                        boxShadow: `0 0 ${orb.size * 8}px ${orb.color}80`,
-                        opacity: 0.6,
+                        boxShadow: `0 0 ${orb.size * 3}px ${orb.color}70`,
+                        opacity: 0.55,
                     }}
-                    animate={{ y: [0, -20, 0], scale: [1, 1.1, 1] }}
-                    transition={{ duration: 4 + i, repeat: Infinity, delay: orb.delay, ease: 'easeInOut' }}
+                    animate={{ y: [0, -18, 0], scale: [1, 1.12, 1] }}
+                    transition={{ duration: 4 + i * 0.6, repeat: Infinity, delay: orb.delay, ease: 'easeInOut' }}
                 />
             ))}
         </div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+
             {/* Badge row */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="flex flex-wrap justify-center gap-3 mb-10"
+                className="flex flex-wrap justify-center gap-3 mb-12"
             >
-                {BADGES.map(({ icon: Icon, label, color }, i) => (
-                    <div key={i} className={`flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${color} text-white text-xs font-bold shadow-lg`}>
+                {BADGES.map(({ icon: Icon, label, from, to }, i) => (
+                    <div key={i}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white text-xs font-bold shadow-xl"
+                        style={{ background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 4px 20px ${from}44` }}>
                         <Icon className="text-sm" /> {label}
                     </div>
                 ))}
@@ -62,12 +78,13 @@ const FinalCTASection = memo(() => (
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="text-4xl sm:text-5xl md:text-6xl font-black text-white mb-6 leading-tight"
+                className="text-5xl sm:text-6xl md:text-7xl font-black text-white mb-6 leading-[1.05]"
             >
-                Ready to see the world
+                Colour the world
                 <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
-                    in full color?
+                <span className="bg-clip-text text-transparent"
+                    style={{ backgroundImage: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)' }}>
+                    accessibly.
                 </span>
             </motion.h2>
 
@@ -76,37 +93,76 @@ const FinalCTASection = memo(() => (
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 }}
-                className="text-lg text-gray-400 max-w-xl mx-auto mb-12"
+                className="text-lg text-gray-400 max-w-lg mx-auto mb-12 leading-relaxed"
             >
-                Join thousands of designers, developers, and everyday users who rely on VisionAid for color accessibility — completely free.
+                Join thousands of designers, developers, and everyday users who rely on Vision Aid for colour accessibility — <strong className="text-white">completely free</strong>, forever.
             </motion.p>
 
-            {/* CTA Buttons */}
+            {/* Primary CTA */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+                className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
             >
-                <Link
-                    to="/color-picker"
-                    className="group inline-flex items-center gap-3 px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-bold text-lg shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-105 transition-all duration-300"
-                >
-                    Start for Free
-                    <motion.span
-                        animate={{ x: [0, 4, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
+                <Link to="/color-picker">
+                    <motion.div
+                        className="group relative inline-flex items-center gap-3 px-10 py-4 rounded-2xl text-white font-black text-lg overflow-hidden"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.97 }}
+                        style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed, #db2777)', boxShadow: '0 8px 40px rgba(124,58,237,0.45)' }}
                     >
-                        <FaArrowRight />
-                    </motion.span>
+                        {/* Shimmer */}
+                        <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '200%' }}
+                            transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1 }}
+                        />
+                        <span className="relative z-10 flex items-center gap-3">
+                            Start Now
+                            <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                                <FaArrowRight />
+                            </motion.span>
+                        </span>
+                    </motion.div>
                 </Link>
-                <Link
-                    to="/simulator"
-                    className="inline-flex items-center gap-2 px-8 py-4 rounded-full border border-white/20 text-white font-semibold text-lg hover:bg-white/10 hover:border-white/40 transition-all duration-300"
-                >
-                    Try Color Blindness Sim
+
+                <Link to="/simulator">
+                    <motion.div
+                        className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-white font-bold text-base border border-white/15 hover:border-white/35 hover:bg-white/5 transition-all duration-300"
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                    >
+                        Try Blindness Simulator
+                    </motion.div>
                 </Link>
+            </motion.div>
+
+            {/* Quick links */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.45 }}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto mb-12"
+            >
+                {QUICK_LINKS.map(({ icon: Icon, label, to, color }) => (
+                    <Link key={to} to={to}>
+                        <motion.div
+                            className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-white/5 hover:border-white/15 text-center transition-all duration-300 hover:-translate-y-1"
+                            style={{ background: 'rgba(255,255,255,0.03)' }}
+                            whileHover={{ boxShadow: `0 8px 30px ${color}33` }}
+                        >
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+                                style={{ background: color + '25', color }}>
+                                <Icon className="text-sm" />
+                            </div>
+                            <span className="text-[11px] text-gray-400 font-semibold leading-tight">{label}</span>
+                        </motion.div>
+                    </Link>
+                ))}
             </motion.div>
 
             {/* Trust line */}
@@ -114,10 +170,10 @@ const FinalCTASection = memo(() => (
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.5 }}
-                className="mt-10 text-xs text-white/30 uppercase tracking-widest font-bold"
+                transition={{ delay: 0.6 }}
+                className="text-[11px] text-white/25 uppercase tracking-[0.2em] font-bold"
             >
-                No sign-up required · Works in your browser · 100% private
+                No sign-up · Works in browser · 100% private · WCAG AAA compliant
             </motion.p>
         </div>
     </section>

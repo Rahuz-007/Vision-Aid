@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useColorHistory } from '../../../context/ColorHistoryContext';
 import EmptyState, { EmptyStateCompact } from '../../common/EmptyState';
 import CameraPermissionGuide from '../../common/CameraPermissionGuide';
+import YoloHealthBadge from '../../common/YoloHealthBadge';
 
 /**
  * Professional Traffic Signal Detector for Color Blind Users
@@ -556,7 +557,7 @@ const TrafficSignalDetector = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s Timeout
 
-      const response = await fetch('http://localhost:5000/detect', {
+      const response = await fetch('http://localhost:8000/detect', {
         method: 'POST',
         body: formData,
         signal: controller.signal
@@ -832,6 +833,9 @@ const TrafficSignalDetector = () => {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold uppercase tracking-widest shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
             Accessibility Enhanced
+          </div>
+          <div className="flex justify-center mb-4">
+            <YoloHealthBadge />
           </div>
 
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">

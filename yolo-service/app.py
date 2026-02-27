@@ -11,9 +11,31 @@ import hashlib
 from typing import Any, Dict, List, Tuple
 from collections import OrderedDict
 
-# Default model: yolov8s.pt — better accuracy than yolov8n.pt
-# Can override via YOLO_MODEL_PATH environment variable
-DEFAULT_MODEL = os.environ.get("YOLO_MODEL_PATH", "yolov8s.pt")
+# Default model: prefer custom-trained model, fall back to yolov8s.pt
+import json
+from pathlib import Path
+
+_BASE_DIR = Path(__file__).parent
+_CUSTOM_MODEL = _BASE_DIR / "traffic_signal_best.pt"
+_FALLBACK_MODEL = os.environ.get("YOLO_MODEL_PATH", "yolov8s.pt")
+DEFAULT_MODEL = str(_CUSTOM_MODEL) if _CUSTOM_MODEL.exists() else _FALLBACK_MODEL
+IS_CUSTOM_MODEL = _CUSTOM_MODEL.exists()
+
+# Load class map (written by train_traffic_signal.py after training)
+_CLASS_MAP_PATH = _BASE_DIR / "class_map.json"
+DEFAULT_CLASS_MAP = {
+    "0": {"signal": "Red Light",             "color": "red",    "hex": "#ef4444", "arrow": None},
+    "1": {"signal": "Yellow Light",          "color": "yellow", "hex": "#eab308", "arrow": None},
+    "2": {"signal": "Green Light",           "color": "green",  "hex": "#22c55e", "arrow": None},
+    "3": {"signal": "Green Left Arrow",      "color": "green",  "hex": "#22c55e", "arrow": "left"},
+    "4": {"signal": "Green Right Arrow",     "color": "green",  "hex": "#22c55e", "arrow": "right"},
+    "5": {"signal": "Green Straight Arrow",  "color": "green",  "hex": "#22c55e", "arrow": "straight"},
+}
+CLASS_MAP = (
+    json.loads(_CLASS_MAP_PATH.read_text())
+    if _CLASS_MAP_PATH.exists()
+    else DEFAULT_CLASS_MAP
+)
 import numpy as np
 
 from flask import Flask, jsonify, request
@@ -277,13 +299,102 @@ def calculate_distance(box: Dict[str, float]) -> float:
     return round(distance, 1)
 
 
-# Initialize Flask app
+def simplify_color(r: int, g: int, b: int) -> str:
+    """
+    Convert an RGB value to a plain, everyday colour name that anyone can understand.
+    Uses HSL so dark/light/vivid variants map correctly.
+    Examples: 'Dark Brown', 'Light Blue', 'Olive Green', 'Navy Blue'
+    """
+    rf, gf, bf = r / 255.0, g / 255.0, b / 255.0
+    cmax, cmin = max(rf, gf, bf), min(rf, gf, bf)
+    delta = cmax - cmin
+    l = (cmax + cmin) / 2.0
+    s = 0.0 if delta == 0 else delta / (1 - abs(2 * l - 1))
+
+    if delta == 0:
+        h = 0.0
+    elif cmax == rf:
+        h = 60 * (((gf - bf) / delta) % 6)
+    elif cmax == gf:
+        h = 60 * (((bf - rf) / delta) + 2)
+    else:
+        h = 60 * (((rf - gf) / delta) + 4)
+
+    def shade(base):
+        if l > 0.72: return f'Light {base}'
+        if l < 0.28: return f'Dark {base}'
+        return base
+
+    # Achromatic — also catch dark/desaturated colours that look grey
+    if s < 0.12 or (s < 0.25 and l < 0.38):
+        if l > 0.92: return 'White'
+        if l > 0.75: return 'Light Gray'
+        if l > 0.50: return 'Gray'
+        if l > 0.25: return 'Dark Gray'
+        return 'Black'
+
+    if h < 15 or h >= 345:
+        if l < 0.28 and s > 0.3: return 'Dark Red'
+        if l > 0.72: return 'Light Pink'
+        return shade('Red')
+    if h < 30:
+        if l < 0.30: return 'Dark Brown'
+        if l < 0.52: return 'Brown'
+        if l > 0.72: return 'Peach'
+        return 'Dark Orange'
+    if h < 48:
+        if l < 0.35: return 'Brown'
+        if l > 0.72: return 'Peach'
+        if l > 0.60: return 'Yellow'   # bright orange-yellow like mustard
+        return shade('Orange')
+    if h < 65:
+        if l < 0.40: return 'Dark Yellow'
+        return shade('Yellow')
+    if h < 80:
+        if l < 0.45: return 'Olive Green'  # dark yellow-green like olive (h~80)
+        return shade('Yellow')
+    if h < 100:
+        if l < 0.45: return 'Olive Green'  # olive (h~80, l~0.35)
+        return 'Lime Green'
+    if h < 150:
+        if l < 0.25: return 'Dark Green'
+        if s < 0.35: return 'Olive Green'
+        return shade('Green')
+    if h < 195:
+        return shade('Teal')
+    if h < 205:
+        if l > 0.65: return 'Light Blue'
+        return 'Sky Blue'
+    if h < 255:
+        if l < 0.25: return 'Dark Blue'
+        if l < 0.50: return 'Navy Blue'
+        if l > 0.70: return 'Light Blue'
+        return 'Blue'
+    if h < 285:
+        return shade('Indigo')
+    if h < 315:
+        if l < 0.30: return 'Dark Purple'
+        if l > 0.70: return 'Lavender'
+        return 'Purple'
+    if h < 345:
+        if l > 0.72: return 'Light Pink'
+        if l < 0.30: return 'Dark Pink'
+        return 'Pink'
+    return shade('Red')
+
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Initialize YOLO service — using YOLOv8s (small) by default
-print(f"Loading YOLO model: {DEFAULT_MODEL} ...")
+# Initialize YOLO service
+if IS_CUSTOM_MODEL:
+    print(f"🎯 Loading CUSTOM trained model: {DEFAULT_MODEL}")
+    print(f"   Loaded class map: {list(CLASS_MAP.values())}")
+else:
+    print(f"Loading YOLO model: {DEFAULT_MODEL} ...")
+    print("   Tip: Run train_traffic_signal.py to train a custom 6-class model.")
+
 yolo_service = OptimizedYOLOService(DEFAULT_MODEL)
 
 # Initialize color database
@@ -356,12 +467,18 @@ def detect() -> Any:
 
             x1, y1, x2, y2 = map(float, coords)
             box = {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
-            
-            # Additional processing for traffic lights
+
+            # Custom-model detection: use class map if available
             color = "unknown"
-            if class_name == "traffic light":
+            arrow = None
+            if IS_CUSTOM_MODEL and str(int(cls_id)) in CLASS_MAP:
+                meta = CLASS_MAP[str(int(cls_id))]
+                color = meta.get("color", "unknown")
+                arrow = meta.get("arrow", None)
+                class_name = meta.get("signal", class_name)
+            elif class_name == "traffic light":
                 color = analyze_traffic_light_color(image, box, color_db)
-            
+
             # Estimate distance (approximate for all objects based on relative size)
             distance = calculate_distance(box)
             
@@ -371,6 +488,7 @@ def detect() -> Any:
                 "class_id": int(cls_id),
                 "class_name": class_name,
                 "color": color,
+                "arrow": arrow,
                 "distance": distance,
             })
 
@@ -449,8 +567,10 @@ def detect_color() -> Any:
     
     processing_time = time.time() - start_time
     
+    simple_name = simplify_color(r, g, b)
     result = {
-        "color_name": color_name,
+        "color_name": simple_name,
+        "raw_name": color_name,
         "rgb": {"r": r, "g": g, "b": b},
         "hex": f"#{r:02x}{g:02x}{b:02x}",
         "processing_time": processing_time
@@ -464,6 +584,7 @@ def model_info() -> Any:
     """Returns information about the loaded model"""
     return jsonify({
         "model": DEFAULT_MODEL,
+        "is_custom": IS_CUSTOM_MODEL,
         "device": yolo_service.device,
         "classes": len(yolo_service.model_names),
         "torch_available": TORCH_AVAILABLE,
@@ -473,10 +594,20 @@ def model_info() -> Any:
     }), 200
 
 
+@app.route("/class-map", methods=["GET"])
+def class_map_endpoint() -> Any:
+    """Returns the signal class map for the currently loaded model"""
+    return jsonify({
+        "is_custom": IS_CUSTOM_MODEL,
+        "class_map": CLASS_MAP,
+    }), 200
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
     print(f"Starting YOLO service on port {port}")
-    print(f"Model: {DEFAULT_MODEL}")
+    print(f"Model: {DEFAULT_MODEL} ({'CUSTOM' if IS_CUSTOM_MODEL else 'generic'})")
     print(f"Device: {yolo_service.device}")
     print(f"Color database: {len(color_db)} colors")
     app.run(host="0.0.0.0", port=port, debug=False)
+

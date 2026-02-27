@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SettingsProvider } from './context/SettingsContext';
@@ -10,6 +10,7 @@ import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import About from './pages/About';
+import Contact from './pages/Contact';
 import { isConfigValid } from './config/firebase';
 import { FaTimes } from 'react-icons/fa';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -17,6 +18,7 @@ import PageSkeleton from './components/common/PageSkeleton';
 import PageTransition from './components/common/PageTransition';
 import ScrollProgressBar from './components/common/ScrollProgressBar';
 import VisionOnboardingModal from './components/auth/VisionOnboardingModal';
+import { NotificationProvider } from './context/NotificationContext';
 import VisionFilters from './components/common/VisionFilters';
 import ScrollToTop from './components/common/ScrollToTop';
 import MobileBottomNav from './components/layout/MobileBottomNav';
@@ -29,11 +31,14 @@ const PaletteChecker = React.lazy(() => import('./components/features/PaletteChe
 const TrafficSignalDetector = React.lazy(() => import('./components/features/TrafficSignalDetector/TrafficSignalDetector'));
 const ColorHistory = React.lazy(() => import('./components/pages/ColorHistory/ColorHistory'));
 const InfoPage = React.lazy(() => import('./pages/InfoPage'));
+const Docs = React.lazy(() => import('./pages/Docs'));
 const ImagePaletteExtractor = React.lazy(() => import('./components/features/ImagePaletteExtractor/ImagePaletteExtractor'));
 const PaletteGenerator = React.lazy(() => import('./components/features/PaletteGenerator/PaletteGenerator'));
 const ColorBlindnessTest = React.lazy(() => import('./components/features/ColorBlindnessTest/ColorBlindnessTest'));
 const ColorPsychology = React.lazy(() => import('./components/features/ColorPsychology/ColorPsychology'));
 const TextChecker = React.lazy(() => import('./components/features/TextChecker/TextChecker'));
+const ColorObjectDetector = React.lazy(() => import('./components/features/ColorObjectDetector/ColorObjectDetector'));
+const ImageRecolor = React.lazy(() => import('./components/features/ImageRecolor/ImageRecolor'));
 
 // Per-route Suspense wrappers: skeleton + page transition
 const withSkeleton = (Component, variant = 'generic') => (
@@ -78,16 +83,18 @@ function AnimatedRoutes({ showConfigWarning, setShowConfigWarning }) {
                         <Route path="/color-test" element={withSkeleton(ColorBlindnessTest, 'generic')} />
                         <Route path="/color-psychology" element={withSkeleton(ColorPsychology, 'generic')} />
                         <Route path="/text-checker" element={withSkeleton(TextChecker, 'checker')} />
+                        <Route path="/color-object-detector" element={withSkeleton(ColorObjectDetector, 'generic')} />
+                        <Route path="/image-recolor" element={withSkeleton(ImageRecolor, 'generic')} />
 
                         {/* Resources Routes */}
-                        <Route path="/docs" element={<InfoPage title="Documentation" category="Resources" />} />
+                        <Route path="/docs" element={<PageTransition><Docs /></PageTransition>} />
                         <Route path="/api" element={<InfoPage title="API Reference" category="Resources" />} />
                         <Route path="/blog" element={<InfoPage title="Latest News & Blog" category="Resources" />} />
                         <Route path="/community" element={<InfoPage title="Community Forum" category="Resources" />} />
 
                         {/* Company Routes */}
                         <Route path="/careers" element={<InfoPage title="Careers at VisionAid" category="Company" />} />
-                        <Route path="/contact" element={<InfoPage title="Contact Us" category="Company" />} />
+                        <Route path="/contact" element={<PageTransition><Contact /></PageTransition>} />
                         <Route path="/press" element={<InfoPage title="Press Kit" category="Company" />} />
 
                         {/* Legal Routes */}
@@ -98,14 +105,31 @@ function AnimatedRoutes({ showConfigWarning, setShowConfigWarning }) {
 
                         <Route path="*" element={
                             <PageTransition>
-                                <div className="flex items-center justify-center min-h-[70vh]">
-                                    <div className="text-center px-4">
-                                        <h1 className="text-9xl font-extrabold text-gray-200 dark:text-gray-800 mb-4">404</h1>
-                                        <p className="text-2xl font-bold mb-4">Page Not Found</p>
-                                        <p className="text-gray-500 mb-8">We couldn't find the page you're looking for.</p>
-                                        <a href="/" className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-semibold shadow-lg shadow-blue-500/30">
-                                            Go Home
-                                        </a>
+                                <div className="flex items-center justify-center min-h-[80vh] px-4">
+                                    <div className="text-center max-w-lg">
+                                        <motion.div
+                                            initial={{ scale: 0.8, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            transition={{ duration: 0.5 }}
+                                            className="relative mb-8 flex justify-center"
+                                        >
+                                            <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full" />
+                                            <h1 className="text-8xl sm:text-9xl font-black bg-clip-text text-transparent bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 drop-shadow-sm mb-4 relative z-10">
+                                                404
+                                            </h1>
+                                        </motion.div>
+                                        <h2 className="text-3xl font-bold mb-4">Lost Your Way?</h2>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-10 text-lg leading-relaxed">
+                                            We couldn't find the page you're looking for. It might have been moved, deleted, or never existed.
+                                        </p>
+                                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                                            <a href="/" className="px-8 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-bold shadow-lg shadow-blue-500/30">
+                                                Go to Homepage
+                                            </a>
+                                            <a href="/color-picker" className="px-8 py-3.5 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-xl hover:border-blue-500/50 transition-all font-bold group">
+                                                Open Tools <span className="inline-block ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </PageTransition>
@@ -126,23 +150,25 @@ function App() {
         <ErrorBoundary>
             <Router>
                 <ScrollToTop />
-                <AuthProvider>
-                    <SettingsProvider>
-                        <ColorHistoryProvider>
-                            <ThemeProvider>
-                                <div className="min-h-screen flex flex-col transition-colors duration-300 dark:bg-gray-950 bg-gray-50 text-gray-900 dark:text-white">
-                                    <ScrollProgressBar />
-                                    <VisionFilters />
-                                    <VisionOnboardingModal />
-                                    <AnimatedRoutes
-                                        showConfigWarning={showConfigWarning}
-                                        setShowConfigWarning={setShowConfigWarning}
-                                    />
-                                </div>
-                            </ThemeProvider>
-                        </ColorHistoryProvider>
-                    </SettingsProvider>
-                </AuthProvider>
+                <NotificationProvider>
+                    <AuthProvider>
+                        <SettingsProvider>
+                            <ColorHistoryProvider>
+                                <ThemeProvider>
+                                    <div className="min-h-screen flex flex-col transition-colors duration-300 dark:bg-gray-950 bg-gray-50 text-gray-900 dark:text-white">
+                                        <ScrollProgressBar />
+                                        <VisionFilters />
+                                        <VisionOnboardingModal />
+                                        <AnimatedRoutes
+                                            showConfigWarning={showConfigWarning}
+                                            setShowConfigWarning={setShowConfigWarning}
+                                        />
+                                    </div>
+                                </ThemeProvider>
+                            </ColorHistoryProvider>
+                        </SettingsProvider>
+                    </AuthProvider>
+                </NotificationProvider>
             </Router>
         </ErrorBoundary>
     );

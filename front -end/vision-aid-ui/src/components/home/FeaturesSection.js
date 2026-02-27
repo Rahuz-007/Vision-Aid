@@ -3,7 +3,7 @@ import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
     FaCamera, FaPalette, FaEye, FaTrafficLight, FaImages, FaArrowRight,
-    FaCheck, FaBrain, FaFont, FaFlask,
+    FaCheck, FaBrain, FaFont, FaFlask, FaTags,
 } from 'react-icons/fa';
 import { hoverLift } from '../../utils/microInteractions';
 
@@ -136,6 +136,20 @@ const FEATURES = [
         previewLabel: 'Readable',
         previewColor: '#0ea5e9',
     },
+    {
+        name: 'Color Object Detector',
+        description: 'AI-powered real-time camera detection that labels every object with its color name — perfect for color blind users.',
+        icon: FaTags,
+        to: '/color-object-detector',
+        gradient: 'from-violet-500 to-fuchsia-600',
+        glow: 'group-hover:shadow-violet-500/20',
+        border: 'hover:border-violet-500/40',
+        tags: ['YOLOv8', 'Color Labels', 'Voice Readout'],
+        previewBg: 'bg-violet-50 dark:bg-violet-900/20',
+        previewContent: '🏷️',
+        previewLabel: 'Blue Chair',
+        previewColor: '#7c3aed',
+    },
 ];
 
 // ── Spotlight effect card ──────────────────────────────────────────────────
@@ -241,7 +255,7 @@ const FeaturesSection = memo(() => {
                     transition={{ duration: 0.8 }}
                 >
                     <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 mb-5">
-                        9 Powerful Tools
+                        10 Powerful Tools
                     </span>
                     <h2 className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white mb-6">
                         Everything You Need

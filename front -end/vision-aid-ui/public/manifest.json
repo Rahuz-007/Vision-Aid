@@ -1,65 +1,65 @@
 {
     "short_name": "VisionAid",
     "name": "VisionAid - Color Accessibility Tools",
-    "description": "Professional color accessibility tools powered by AI. Real-time detection, WCAG checking, and simulation.",
+    "description": "AI-powered colour accessibility tools for everyone. Real-time detection, vision tests, WCAG checking, and colour simulation.",
     "icons": [
         {
-            "src": "favicon.ico",
-            "sizes": "64x64 32x32 24x24 16x16",
-            "type": "image/x-icon"
-        },
-        {
-            "src": "logo192.png",
-            "type": "image/png",
-            "sizes": "192x192",
-            "purpose": "any"
-        },
-        {
-            "src": "logo512.png",
-            "type": "image/png",
-            "sizes": "512x512",
-            "purpose": "any"
+            "src": "favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
         }
     ],
-    "start_url": "/",
+    "start_url": "/?source=pwa",
     "display": "standalone",
+    "display_override": ["standalone", "minimal-ui", "browser"],
     "scope": "/",
     "theme_color": "#1F2937",
-    "background_color": "#111827",
-    "categories": ["productivity", "utilities"],
-    "screenshots": [
-        {
-            "src": "logo192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "form_factor": "narrow"
-        }
-    ],
+    "background_color": "#0a0a1a",
+    "categories": ["productivity", "utilities", "health"],
+    "lang": "en",
+    "dir": "ltr",
     "orientation": "portrait-primary",
+    "prefer_related_applications": false,
     "shortcuts": [
         {
-            "name": "Live Detector",
+            "name": "Color Detector",
             "short_name": "Detector",
-            "description": "Start real-time color detection",
-            "url": "/live-detector",
-            "icons": [
-                {
-                    "src": "logo192.png",
-                    "sizes": "192x192"
-                }
-            ]
+            "description": "Start real-time colour detection with your camera",
+            "url": "/color-picker",
+            "icons": [{ "src": "favicon.svg", "sizes": "any" }]
         },
         {
-            "name": "Palette Checker",
-            "short_name": "Palette",
-            "description": "Check color contrast and WCAG compliance",
-            "url": "/palette-checker",
-            "icons": [
-                {
-                    "src": "logo192.png",
-                    "sizes": "192x192"
-                }
-            ]
+            "name": "Vision Test",
+            "short_name": "Test",
+            "description": "Take the colour vision screening test",
+            "url": "/color-test",
+            "icons": [{ "src": "favicon.svg", "sizes": "any" }]
+        },
+        {
+            "name": "Traffic Signal Detector",
+            "short_name": "Traffic",
+            "description": "AI-powered traffic signal detection",
+            "url": "/traffic-signal",
+            "icons": [{ "src": "favicon.svg", "sizes": "any" }]
+        },
+        {
+            "name": "Colour Simulator",
+            "short_name": "Simulator",
+            "description": "Simulate colour blindness on any image",
+            "url": "/simulator",
+            "icons": [{ "src": "favicon.svg", "sizes": "any" }]
+        }
+    ],
+    "protocol_handlers": [],
+    "edge_side_panel": { "preferred_width": 480 },
+    "screenshots": [
+        {
+            "src": "favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "form_factor": "narrow",
+            "label": "VisionAid Home Screen"
         }
     ]
 }

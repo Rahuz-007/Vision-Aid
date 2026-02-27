@@ -8,8 +8,10 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useColorHistory } from '../../../context/ColorHistoryContext';
+import { useNotifications } from '../../../context/NotificationContext';
 import EmptyState from '../../common/EmptyState';
 import { hoverLift, tapScale } from '../../../utils/microInteractions';
+import YoloHealthBadge from '../../common/YoloHealthBadge';
 
 // ColorPicker Component - Smart Camera
 /**
@@ -165,6 +167,7 @@ const ColorDetector = () => {
     const overlayRef = useRef(null);
     const streamRef = useRef(null);
     const { addToHistory } = useColorHistory();
+    const { addNotification } = useNotifications();
 
     const [mode, setMode] = useState('camera');
     const modeRef = useRef(mode); // Sync ref for interval
@@ -198,6 +201,36 @@ const ColorDetector = () => {
             setTimeout(() => setCopied(false), 1800);
         });
     }, []);
+
+    const handleShareLook = useCallback(() => {
+        if (!matchVerdict || !matchItem1 || !matchItem2) return;
+        const scoreEmoji = matchVerdict.score > 6 ? '✅' : '⚠️';
+        const text =
+            `👕 Outfit Match Result — Vision Aid
+
+${scoreEmoji} ${matchVerdict.title}  (${matchVerdict.score}/10)
+${matchVerdict.reason}
+
+🎨 Top:    ${matchItem1.name}  ${matchItem1.hex}
+👖 Bottom: ${matchItem2.name}  ${matchItem2.hex}
+${occasionAdvice
+                ? `\n✨ Vibe: ${occasionAdvice.vibe}\n🏢 Work: ${occasionAdvice.business}\n🏖️ Casual: ${occasionAdvice.casual}\n🎩 Formal: ${occasionAdvice.formal}`
+                : ''
+            }
+
+— Checked with Vision Aid 🌈`;
+
+        if (navigator.share) {
+            navigator.share({ title: 'My Outfit Match', text })
+                .catch(() => { }); // user cancelled — no error needed
+        } else {
+            navigator.clipboard.writeText(text).then(() => {
+                toast.success('Look copied to clipboard! 📋');
+            }).catch(() => {
+                toast.error('Could not share. Try copying manually.');
+            });
+        }
+    }, [matchVerdict, matchItem1, matchItem2, occasionAdvice]);
 
     const analyzeColor = useCallback((currentHex) => {
         const r = parseInt(currentHex.substr(1, 2), 16);
@@ -379,6 +412,9 @@ const ColorDetector = () => {
         // Also push to inline recent list
         setRecentColors(prev => [colorInfo.hex, ...prev.filter(c => c !== colorInfo.hex)].slice(0, 5));
         toast.success(`Saved "${colorInfo.name}"`);
+
+        // Push notification
+        addNotification('info', `Color "${colorInfo.name}" saved to history.`, { link: '/color-history' });
     };
 
     const speak = useCallback((text) => {
@@ -634,23 +670,52 @@ const ColorDetector = () => {
         return () => clearInterval(interval);
     }, [isDetecting, analyzeColor, mode, patternEnabled, targetFindColor, arEnabled]);
 
+    // WCAG contrast ratio helper
+    const getWcagBadge = (luminance) => {
+        const contrast = luminance > 0.5
+            ? (luminance + 0.05) / (0.0 + 0.05)
+            : (1.0 + 0.05) / (luminance + 0.05);
+        if (contrast >= 7) return { label: 'AAA', color: '#10b981', bg: 'rgba(16,185,129,0.12)' };
+        if (contrast >= 4.5) return { label: 'AA', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' };
+        return { label: 'A', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' };
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white p-4 pt-20 pb-20 font-sans transition-colors duration-300">
             <div className="max-w-6xl mx-auto">
+                {/* Header */}
                 <div className="text-center mb-6">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-gradient-to-r dark:from-blue-900 dark:to-purple-900 border border-gray-200 dark:border-blue-500/30 rounded-full text-xs font-bold text-gray-600 dark:text-gray-200 mb-2 shadow-sm">
-                        {mode === 'match' ? <><FaTshirt /> Outfit Advisor</> : <><FaPalette /> Visual Assistant</>}
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-bold text-gray-500 dark:text-gray-400 mb-3 shadow-sm tracking-widest uppercase">
+                        {mode === 'match' ? <><FaTshirt className="text-purple-500" /> Outfit Advisor</> : <><FaPalette className="text-blue-500" /> Visual Assistant</>}
                     </div>
-                    <h1 className="text-4xl font-black text-gray-900 dark:text-white">
-                        {mode === 'match' ? 'Outfit' : 'Color'} <span className="text-blue-600 dark:text-blue-500">{mode === 'match' ? 'Matcher' : 'Detector'}</span>
+                    <div className="flex justify-center mb-4">
+                        <YoloHealthBadge />
+                    </div>
+                    <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
+                        {mode === 'match' ? 'Outfit' : 'Color'}{' '}
+                        <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            {mode === 'match' ? 'Matcher' : 'Detector'}
+                        </span>
                     </h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">AI-powered colour intelligence for everyone</p>
                 </div>
 
-                <div className="flex justify-center gap-4 mb-6 flex-wrap">
-                    <button onClick={() => { setMode('camera'); setColorInfo(null); stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm transition-all border ${mode === 'camera' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Camera</button>
-                    <button onClick={() => { setMode('manual'); stopCamera(); analyzeColor(selectedColor); }} className={`px-3 py-2 rounded-lg font-bold text-sm transition-all border ${mode === 'manual' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Manual</button>
-                    <button onClick={() => { setMode('find'); setColorInfo(null); stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm flex gap-2 transition-all border ${mode === 'find' ? 'bg-green-600 text-white border-green-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><FaSearch /> Find</button>
-                    <button onClick={() => { setMode('match'); setColorInfo(null); setMatchVerdict(null); setOccasionAdvice(null); stopCamera(); }} className={`px-3 py-2 rounded-lg font-bold text-sm flex gap-2 transition-all border ${mode === 'match' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><FaTshirt /> Match</button>
+                {/* Mode Tabs */}
+                <div className="flex justify-center mb-6">
+                    <div className="inline-flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-1 gap-1 shadow-sm">
+                        {[
+                            { id: 'camera', label: 'Camera', icon: <FaCamera />, active: 'bg-blue-600 text-white shadow', action: () => { setMode('camera'); setColorInfo(null); stopCamera(); } },
+                            { id: 'manual', label: 'Analyse', icon: <FaAdjust />, active: 'bg-indigo-600 text-white shadow', action: () => { setMode('manual'); stopCamera(); analyzeColor(selectedColor); } },
+                            { id: 'find', label: 'Find', icon: <FaSearch />, active: 'bg-emerald-600 text-white shadow', action: () => { setMode('find'); setColorInfo(null); stopCamera(); } },
+                            { id: 'match', label: 'Match', icon: <FaTshirt />, active: 'bg-purple-600 text-white shadow', action: () => { setMode('match'); setColorInfo(null); setMatchVerdict(null); setOccasionAdvice(null); stopCamera(); } },
+                        ].map(tab => (
+                            <button key={tab.id} onClick={tab.action}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${mode === tab.id ? tab.active : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    }`}>
+                                {tab.icon} {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 bg-white dark:bg-gray-900 p-2 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-none">
@@ -767,14 +832,27 @@ const ColorDetector = () => {
                         )}
 
                         {mode !== 'manual' && !isDetecting && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-950/80 z-20">
-                                <button onClick={startCamera} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition-colors">Start {mode === 'find' ? 'Search' : 'Camera'}</button>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center z-20"
+                                style={{ background: 'linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(30,27,75,0.92) 100%)' }}>
+                                <div className="mb-4 w-16 h-16 rounded-2xl flex items-center justify-center"
+                                    style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 0 32px rgba(139,92,246,0.4)' }}>
+                                    <FaCamera className="text-white text-2xl" />
+                                </div>
+                                <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4">
+                                    {mode === 'find' ? 'Colour Search Mode' : mode === 'match' ? 'Outfit Match Mode' : 'AI Colour Detector'}
+                                </p>
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                                    onClick={startCamera}
+                                    className="px-8 py-3 rounded-xl font-bold text-sm text-white"
+                                    style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)', boxShadow: '0 4px 20px rgba(124,58,237,0.4)' }}
+                                >Start {mode === 'find' ? 'Search' : 'Camera'}</motion.button>
                             </div>
                         )}
                     </div>
 
                     {/* RIGHT SIDE: OUTPUT */}
-                    <div className="flex flex-col items-center justify-center p-6 text-center">
+                    <div className="flex flex-col items-center justify-start p-5 text-center overflow-y-auto">
                         <AnimatePresence mode="wait">
                             {mode === 'match' ? (
                                 <motion.div key="match-ui" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full">
@@ -848,7 +926,7 @@ const ColorDetector = () => {
                                     )}
                                     <div className="flex gap-2 mt-4">
                                         <button onClick={() => { setMatchItem1(null); setMatchItem2(null); setMatchVerdict(null); setOccasionAdvice(null); setShowTryOn(false); }} className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all font-bold">New Match</button>
-                                        {matchVerdict && <button className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-all font-bold flex justify-center items-center gap-2"><FaCopy /> Share Look</button>}
+                                        {matchVerdict && <button onClick={handleShareLook} className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-all font-bold flex justify-center items-center gap-2"><FaCopy /> Share Look</button>}
                                     </div>
                                 </motion.div>
                             ) : mode === 'find' ? (
@@ -883,119 +961,170 @@ const ColorDetector = () => {
                                 </motion.div>
                             ) : (
                                 colorInfo ? (
-                                    <motion.div key={colorInfo.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full">
-                                        <div className="mb-4">
-                                            {/* Color swatch header */}
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div
-                                                    className="w-14 h-14 rounded-2xl shadow-lg border border-white/10 flex-shrink-0"
-                                                    style={{ backgroundColor: colorInfo.hex }}
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                    <h2 className="text-2xl md:text-3xl font-black mb-0.5 text-gray-900 dark:text-white leading-tight truncate">{colorInfo.name}</h2>
-                                                    {/* ── ONE-CLICK COPY HEX ── */}
-                                                    <motion.button
-                                                        onClick={() => copyHex(colorInfo.hex)}
-                                                        whileTap={{ scale: 0.92 }}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-xs font-bold tracking-wider text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 transition-all font-mono"
-                                                    >
-                                                        <AnimatePresence mode="wait">
-                                                            {copied ? (
-                                                                <motion.span key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-green-500">✓</motion.span>
-                                                            ) : (
-                                                                <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}><FaCopy className="text-[10px]" /></motion.span>
-                                                            )}
-                                                        </AnimatePresence>
-                                                        {colorInfo.hex}
-                                                    </motion.button>
-                                                </div>
-                                            </div>
+                                    <motion.div key={colorInfo.name} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="w-full space-y-3">
 
-                                            {/* ── RECENT COLORS STRIP ── */}
-                                            {recentColors.length > 0 && (
-                                                <div className="flex items-center gap-2 mb-3 p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest shrink-0">Recent</span>
-                                                    <div className="flex gap-1.5 flex-wrap">
-                                                        {recentColors.map((c, i) => (
-                                                            <motion.button
-                                                                key={c + i}
-                                                                title={c}
-                                                                onClick={() => copyHex(c)}
-                                                                whileHover={{ scale: 1.2 }}
-                                                                whileTap={{ scale: 0.9 }}
-                                                                className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-700 shadow-sm"
-                                                                style={{ backgroundColor: c }}
-                                                            />
+                                        {/* ── SWATCH HERO CARD ── */}
+                                        <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ height: 110 }}>
+                                            <div className="absolute inset-0 transition-colors duration-500" style={{ backgroundColor: colorInfo.hex }} />
+                                            {/* Gradient overlay */}
+                                            <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.52) 100%)' }} />
+                                            <div className="absolute inset-0 flex flex-col justify-between p-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-0.5">Detected Colour</p>
+                                                        <h2 className="text-white text-xl font-black leading-tight drop-shadow-md">{colorInfo.name}</h2>
+                                                    </div>
+                                                    {/* WCAG Badge */}
+                                                    {(() => {
+                                                        const badge = getWcagBadge(colorInfo.luminance); return (
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black border" style={{ color: badge.color, background: badge.bg, borderColor: badge.color + '44' }}>WCAG {badge.label}</span>
+                                                                <span className="text-white/50 text-[9px] font-bold uppercase tracking-widest">{colorInfo.contrast}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
+                                                {/* HEX copy pill */}
+                                                <motion.button
+                                                    onClick={() => copyHex(colorInfo.hex)}
+                                                    whileTap={{ scale: 0.94 }}
+                                                    className="self-start flex items-center gap-2 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1.5 text-white font-mono text-xs font-bold hover:bg-black/50 transition-all"
+                                                >
+                                                    <AnimatePresence mode="wait">
+                                                        {copied
+                                                            ? <motion.span key="ck" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-green-400">✓ Copied!</motion.span>
+                                                            : <motion.span key="cp" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="flex items-center gap-1.5"><FaCopy className="text-white/60" />{colorInfo.hex}</motion.span>
+                                                        }
+                                                    </AnimatePresence>
+                                                </motion.button>
+                                            </div>
+                                        </div>
+
+                                        {/* ── VALUE ROWS ── */}
+                                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
+                                            {[
+                                                { label: 'HEX', value: colorInfo.hex, mono: true },
+                                                { label: 'RGB', value: colorInfo.rgb, mono: true },
+                                                { label: 'HSL', value: `hsl(${colorInfo.hsl[0]}°, ${colorInfo.hsl[1]}%, ${colorInfo.hsl[2]}%)`, mono: true },
+                                                { label: 'CMYK', value: colorInfo.cmyk ? `${colorInfo.cmyk[0]}% ${colorInfo.cmyk[1]}% ${colorInfo.cmyk[2]}% ${colorInfo.cmyk[3]}%` : '—', mono: true },
+                                            ].map(row => (
+                                                <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">{row.label}</span>
+                                                    <span className={`text-sm font-bold text-gray-800 dark:text-gray-100 ${row.mono ? 'font-mono' : ''}`}>{row.value}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* ── RECENT COLORS ── */}
+                                        {recentColors.length > 0 && (
+                                            <div className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest shrink-0">Recent</span>
+                                                <div className="flex gap-1.5 flex-1">
+                                                    {recentColors.map((c, i) => (
+                                                        <motion.button key={c + i} title={c} onClick={() => copyHex(c)}
+                                                            whileHover={{ scale: 1.25, y: -2 }} whileTap={{ scale: 0.9 }}
+                                                            className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-700 shadow"
+                                                            style={{ backgroundColor: c }} />
+                                                    ))}
+                                                </div>
+                                                <span className="text-[10px] text-gray-300 dark:text-gray-600">tap to copy</span>
+                                            </div>
+                                        )}
+
+                                        {/* ── TABS ── */}
+                                        <div className="flex bg-gray-100 dark:bg-gray-800/70 p-1 rounded-xl gap-1">
+                                            {[['info', 'Details', 'bg-blue-600'], ['harmony', 'Harmonies', 'bg-purple-600'], ['access', 'Simulation', 'bg-teal-600']].map(([id, label, ac]) => (
+                                                <button key={id} onClick={() => setDetailTab(id)}
+                                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === id ? `${ac} text-white shadow` : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                                        }`}>{label}</button>
+                                            ))}
+                                        </div>
+
+                                        {/* ── TAB PANELS ── */}
+                                        <AnimatePresence mode="wait">
+                                            {detailTab === 'info' && (
+                                                <motion.div key="info" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                                    className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+                                                    <div className="p-3 grid grid-cols-2 gap-3">
+                                                        {/* Contrast preview circles */}
+                                                        <div className="col-span-2 flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+                                                            <div className="flex gap-2">
+                                                                {['#ffffff', '#000000'].map(bg => (
+                                                                    <div key={bg} className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black shadow-inner border border-gray-200 dark:border-gray-700"
+                                                                        style={{ backgroundColor: bg, color: colorInfo.hex }}>Aa</div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] text-gray-400 uppercase font-bold">Text Visibility</p>
+                                                                <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{colorInfo.contrast}</p>
+                                                            </div>
+                                                        </div>
+                                                        {/* Luminance bar */}
+                                                        <div className="col-span-2">
+                                                            <div className="flex justify-between text-[10px] text-gray-400 font-bold uppercase mb-1">
+                                                                <span>Luminance</span><span>{Math.round(colorInfo.luminance * 100)}%</span>
+                                                            </div>
+                                                            <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                                                <motion.div className="h-full rounded-full"
+                                                                    initial={{ width: 0 }} animate={{ width: `${Math.round(colorInfo.luminance * 100)}%` }}
+                                                                    style={{ background: `linear-gradient(90deg, ${colorInfo.hex}, #ffffff)` }} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                            {detailTab === 'harmony' && (
+                                                <motion.div key="harmony" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                                    className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm space-y-3">
+                                                    {[
+                                                        { label: 'Complementary', swatches: [colorInfo.complementary] },
+                                                        { label: 'Analogous', swatches: colorInfo.harmonies.analogous },
+                                                        { label: 'Triadic', swatches: colorInfo.harmonies.triadic },
+                                                    ].map(h => (
+                                                        <div key={h.label} className="flex items-center justify-between">
+                                                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{h.label}</span>
+                                                            <div className="flex gap-2">
+                                                                {h.swatches.map((s, i) => (
+                                                                    <div key={i} className="w-9 h-9 rounded-xl shadow border border-gray-100 dark:border-gray-700" style={{ background: s }} />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                            {detailTab === 'access' && (
+                                                <motion.div key="access" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                                    className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm">
+                                                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-3 text-left">How others see this colour</p>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {[
+                                                            { label: 'Protanopia', sim: colorInfo.simulations.protan },
+                                                            { label: 'Deuteranopia', sim: colorInfo.simulations.deutan },
+                                                            { label: 'Tritanopia', sim: colorInfo.simulations.tritan },
+                                                        ].map(s => (
+                                                            <div key={s.label} className="text-center">
+                                                                <div className="h-12 rounded-xl mb-1.5 shadow-inner border border-gray-100 dark:border-gray-700" style={{ background: s.sim }} />
+                                                                <p className="text-[9px] text-gray-500 dark:text-gray-400 font-bold leading-tight">{s.label}</p>
+                                                            </div>
                                                         ))}
                                                     </div>
-                                                    <span className="text-[10px] text-gray-400 ml-auto">tap to copy</span>
-                                                </div>
+                                                </motion.div>
                                             )}
+                                        </AnimatePresence>
 
-                                            {/* Feature Tabs */}
-                                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-4">
-                                                <button onClick={() => setDetailTab('info')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'info' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>Details</button>
-                                                <button onClick={() => setDetailTab('harmony')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'harmony' ? 'bg-purple-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>Harmonies</button>
-                                                <button onClick={() => setDetailTab('access')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${detailTab === 'access' ? 'bg-teal-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>Blindness</button>
-                                            </div>
-
-                                            {/* Tab Content */}
-                                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700 min-h-[180px]">
-                                                {detailTab === 'info' && (
-                                                    <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-left">
-                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">RGB</p><p className="font-mono text-sm text-gray-700 dark:text-gray-300">{colorInfo.rgb}</p></div>
-                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">HSL</p><p className="font-mono text-sm text-gray-700 dark:text-gray-300">{colorInfo.hsl[0]}°, {colorInfo.hsl[1]}%, {colorInfo.hsl[2]}%</p></div>
-                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">CMYK</p><p className="font-mono text-sm text-gray-700 dark:text-gray-300">{colorInfo.cmyk?.join(', ')}</p></div>
-                                                        <div><p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase font-bold">Contrast</p><p className="text-sm text-green-600 dark:text-green-400">{colorInfo.contrast}</p></div>
-                                                    </div>
-                                                )}
-
-                                                {detailTab === 'harmony' && (
-                                                    <div className="flex flex-col gap-2 text-gray-700 dark:text-gray-300">
-                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.complementary }}></div><span className="text-xs">Complementary</span></div>
-                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.analogous[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.analogous[1] }}></div><span className="text-xs">Analogous</span></div>
-                                                        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.triadic[0] }}></div><div className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.harmonies.triadic[1] }}></div><span className="text-xs">Triadic</span></div>
-                                                    </div>
-                                                )}
-
-                                                {detailTab === 'access' && (
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <div className="text-center">
-                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.simulations.protan }}></div>
-                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Protanopia</p>
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.simulations.deutan }}></div>
-                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Deuteranopia</p>
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <div className="h-10 w-full rounded-lg mb-1 border border-gray-300 dark:border-gray-600" style={{ background: colorInfo.simulations.tritan }}></div>
-                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Tritanopia</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto">
-                                            <motion.button
-                                                onClick={() => speak(colorInfo.name)}
-                                                whileHover={hoverLift}
-                                                whileTap={tapScale}
-                                                className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all"
-                                            >
-                                                <FaVolumeUp /> Speak
+                                        {/* ── ACTION BUTTONS ── */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <motion.button onClick={() => speak(colorInfo.name)} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
+                                                className="py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 text-white shadow-lg transition-all"
+                                                style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', boxShadow: '0 4px 14px rgba(79,70,229,0.35)' }}>
+                                                <FaVolumeUp /> Read Aloud
                                             </motion.button>
-                                            <motion.button
-                                                onClick={saveToHistory}
-                                                whileHover={hoverLift}
-                                                whileTap={tapScale}
-                                                className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
-                                            >
-                                                <FaBookmark /> Save
+                                            <motion.button onClick={saveToHistory} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
+                                                className="py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white shadow-sm hover:shadow transition-all">
+                                                <FaBookmark className="text-purple-500" /> Save
                                             </motion.button>
                                         </div>
-                                        {patternEnabled && <div className="mt-4 text-xs text-yellow-500 bg-yellow-900/20 px-3 py-1 rounded inline-block">Pattern Overlay Active</div>}
+                                        {patternEnabled && <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl">⟁ Pattern Overlay Active</div>}
                                     </motion.div>
                                 ) : (
                                     <motion.div
