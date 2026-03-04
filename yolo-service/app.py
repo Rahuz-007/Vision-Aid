@@ -111,7 +111,7 @@ class OptimizedYOLOService:
             print("No GPU available, using CPU")
             return 'cpu'
     
-    def detect(self, image, conf=0.15):
+    def detect(self, image, conf=0.30):
         """Perform detection with memory optimization"""
         with torch.no_grad() if TORCH_AVAILABLE else nullcontext():
             results = self.model(image, verbose=False, conf=conf, device=self.device)
@@ -419,9 +419,9 @@ def health() -> Any:
 
 @app.route("/detect", methods=["POST"])
 def detect() -> Any:
-    """Detection endpoint with caching and optimization"""
+    """Detection endpoint — cache only for traffic uploads, not live camera frames"""
     start_time = time.time()
-    
+
     if "image" not in request.files:
         return jsonify({"error": "Missing file field 'image'"}), 400
 
@@ -430,43 +430,86 @@ def detect() -> Any:
         return jsonify({"error": "Empty filename"}), 400
 
     image_bytes = file_storage.read()
-    
-    # Check cache first
-    cached_result = image_cache.get(image_bytes)
-    if cached_result:
-        cached_result['cached'] = True
-        cached_result['processing_time'] = time.time() - start_time
-        return jsonify(cached_result), 200
-    
+
+    # Get detection mode FIRST — live camera frames must NOT be cached
+    # (every frame is unique; caching them fills all 100 slots with useless entries)
+    detection_type = request.form.get("type", "traffic")  # 'traffic' or 'general'
+    use_cache = (detection_type == "traffic")  # only cache uploaded traffic images
+
+    # Check cache only for traffic uploads
+    if use_cache:
+        cached_result = image_cache.get(image_bytes)
+        if cached_result:
+            cached_result['cached'] = True
+            cached_result['processing_time'] = time.time() - start_time
+            return jsonify(cached_result), 200
+
     try:
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
         return jsonify({"error": f"Invalid image: {str(e)}"}), 400
 
-    # Get detection mode from request form data or query params
-    detection_type = request.form.get("type", "traffic") # 'traffic' or 'general'
+    # Confidence: 0.30 — balanced for CPU speed + accuracy
+    results = yolo_service.detect(image, conf=0.30)
 
-    # Lower confidence to 0.15 to ensure we don't miss smaller objects
-    results = yolo_service.detect(image, conf=0.15)
+    # ── Smart shape-based reclassification rules ──────────────────────────────
+    # These fix common COCO misdetections based on bounding-box geometry.
+    # Format: original_class -> (corrected_class, max_aspect_ratio, max_area_fraction)
+    #   aspect_ratio  = width / height  (values near 1.0 = square-ish)
+    #   area_fraction = box_area / image_area  (small value = small object)
+    img_w, img_h = image.size
+    img_area = max(img_w * img_h, 1)
+
+    SHAPE_REMAP = {
+        # Watches are small AND squarish; phones are tall and larger
+        "cell phone": {
+            "conditions": [{"max_aspect_diff": 0.55, "max_area_frac": 0.06, "remap_to": "watch"}]
+        },
+        # Books sometimes detected as laptops when closed flat
+        "laptop":     {
+            "conditions": [{"min_aspect_ratio": 1.8, "max_area_frac": 0.05, "remap_to": "book"}]
+        },
+    }
 
     detections: List[Dict[str, Any]] = []
     for result in results:
         if result.boxes is None:
             continue
 
-        for coords, conf, cls_id in zip(result.boxes.xyxy.tolist(), 
-                                        result.boxes.conf.tolist(), 
+        for coords, conf, cls_id in zip(result.boxes.xyxy.tolist(),
+                                        result.boxes.conf.tolist(),
                                         result.boxes.cls.tolist()):
             class_name = yolo_service.model_names.get(int(cls_id), str(cls_id))
-            
+
             # Filter based on detection type
             if detection_type == "traffic":
                 if class_name != "traffic light":
                     continue
-            # For "general", we accept all classes
+            # For "general", accept all classes
 
             x1, y1, x2, y2 = map(float, coords)
             box = {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
+
+            # ── Shape-based reclassification ───────────────────────────────────
+            box_w  = x2 - x1
+            box_h  = y2 - y1
+            aspect = box_w / max(box_h, 1)          # width / height
+            area_frac = (box_w * box_h) / img_area  # fraction of full frame
+
+            if class_name in SHAPE_REMAP:
+                for rule in SHAPE_REMAP[class_name]["conditions"]:
+                    # Squarish check: |aspect - 1| < max_aspect_diff
+                    aspect_ok = True
+                    if "max_aspect_diff" in rule:
+                        aspect_ok = abs(aspect - 1.0) < rule["max_aspect_diff"]
+                    if "min_aspect_ratio" in rule:
+                        aspect_ok = aspect >= rule["min_aspect_ratio"]
+                    size_ok = area_frac <= rule.get("max_area_frac", 1.0)
+                    if aspect_ok and size_ok:
+                        class_name = rule["remap_to"]
+                        print(f"[Remap] Reclassified to '{class_name}' "
+                              f"(aspect={aspect:.2f}, area%={area_frac*100:.1f}%)")
+                        break
 
             # Custom-model detection: use class map if available
             color = "unknown"
@@ -479,9 +522,9 @@ def detect() -> Any:
             elif class_name == "traffic light":
                 color = analyze_traffic_light_color(image, box, color_db)
 
-            # Estimate distance (approximate for all objects based on relative size)
+            # Estimate distance
             distance = calculate_distance(box)
-            
+
             detections.append({
                 "box": box,
                 "confidence": float(conf),
@@ -500,13 +543,11 @@ def detect() -> Any:
         "processing_time": processing_time,
         "cached": False,
     }
-    
-    # Cache the result
-    image_cache.set(image_bytes, result)
-    
-    # Cleanup memory
-    yolo_service.cleanup_memory()
-    
+
+    # Only cache traffic signal uploads (not live camera frames)
+    if use_cache:
+        image_cache.set(image_bytes, result)
+
     return jsonify(result), 200
 
 

@@ -243,9 +243,9 @@ const ColorObjectDetector = () => {
         const video = videoRef.current;
         if (video.readyState < 2) return;
 
-        // Throttle to ~3 FPS for stability
+        // Throttle to ~2 FPS for CPU stability
         const now = Date.now();
-        if (now - lastCallRef.current < 333) return;
+        if (now - lastCallRef.current < 500) return;
         lastCallRef.current = now;
 
         const canvas = canvasRef.current;
@@ -263,7 +263,7 @@ const ColorObjectDetector = () => {
 
             try {
                 const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 3000);
+                const timer = setTimeout(() => controller.abort(), 8000); // 8s timeout for CPU model
                 const res = await fetch(`${YOLO_URL}/detect`, {
                     method: 'POST', body: form, signal: controller.signal
                 });
@@ -308,7 +308,7 @@ const ColorObjectDetector = () => {
     // ── Detection loop ─────────────────────────────────────────────────────────
     useEffect(() => {
         if (isDetecting) {
-            detectionLoopRef.current = setInterval(detectFrame, 333);
+            detectionLoopRef.current = setInterval(detectFrame, 500);
         }
         return () => clearInterval(detectionLoopRef.current);
     }, [isDetecting, detectFrame]);

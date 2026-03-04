@@ -39,3 +39,21 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# YOLO model weights (large binary files — download separately)
+yolo-service/yolov8x.pt
+yolo-service/yolov8l.pt
+yolo-service/yolov8m.pt
+yolo-service/yolov8n.pt
+yolo-service/yolov8s.pt
+yolo-service/*.pt
+
+# Test & temp files
+yolo-service/test_img.jpg
+yolo-service/explore_dollar_street.py
+yolo-service/dollar_street_*.json
+yolo-service/dollar_street_sample.csv
+
+# PowerPoint files
+*.pptx
+generate_ppt.py
